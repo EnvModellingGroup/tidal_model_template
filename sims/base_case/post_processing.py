@@ -72,12 +72,18 @@ for i in range(elev.dat.data.shape[0]):
 # sort out the min, max and tidal range - save as h5 to rasterise.
 tr = Function(P2, name="TidalRange")
 tr.dat.data[:] = np.array(detector_tidal_range)
+chk = DumbCheckpoint(output_dir + '/tidal_range', mode=FILE_CREATE)
+chk.store(tr, name='TidalRange')
 File( output_dir + '/tidal_range.pvd').write(tr)
 minfs = Function(P2, name="MinFS")
 minfs.dat.data[:] = np.array(detector_minfs)
+chk = DumbCheckpoint(output_dir + '/min_fs', mode=FILE_CREATE)
+chk.store(minfs, name='MinFS')
 File( output_dir + '/min_fs.pvd').write(minfs)
 maxfs = Function(P2, name="MaxFS")
 maxfs.dat.data[:] = np.array(detector_maxfs)
+chk = DumbCheckpoint(output_dir + '/max_fs', mode=FILE_CREATE)
+chk.store(maxfs, name='MaxFS')
 File( output_dir + '/max_fs.pvd').write(maxfs)
 
 
@@ -87,8 +93,14 @@ for i in constituents:
     D[i + '_phase']= Function(P2, name= i +'_phase')
     D[i + '_amp'].dat.data[:] = np.array(detector_amplitudes)[:,constituents.index(i)]
     D[i + '_phase'].dat.data[:] = np.array(detector_phases)[:,constituents.index(i)]
+    chk = DumbCheckpoint(output_dir + '/' + i + '_amp', mode=FILE_CREATE)
+    chk.store(D[i + '_amp'], name= i + '_amp')
+    chk = DumbCheckpoint(output_dir + '/' + i + '_phase', mode=FILE_CREATE)
+    chk.store(D[i + '_phase'], name= i + '_phase')
     File( output_dir + '/' + i + '_amp.pvd').write(D[i + '_amp'])
     File( output_dir + '/' + i + '_phase.pvd').write(D[i + '_phase'])
     D[i + '_phase'].dat.data[:] = np.arcsin(np.sin(D[i + '_phase'].dat.data[:]))
     File( output_dir + '/' + i + '_phase_mod_pi.pvd').write(D[i + '_phase'])
+    chk = DumbCheckpoint(output_dir + '/' + i + '_phase_mod_pi', mode=FILE_CREATE)
+    chk.store(D[i + '_phase'], name= i + '_phase')
 

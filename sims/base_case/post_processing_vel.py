@@ -35,24 +35,8 @@ thetis_times = t_export*np.arange(t_n) + t_export
 
 P1 = FunctionSpace(mesh, "CG", 1)
 
-# read bathymetry code
-chk = DumbCheckpoint('bathymetry', mode=FILE_READ)
-bathymetry2d = Function(P1)
-chk.load(bathymetry2d,  name='bathymetry')
-chk.close()
-
-#read viscosity / manning boundaries code
-chk = DumbCheckpoint('viscosity', mode=FILE_READ)
-h_viscosity = Function(bathymetry2d.function_space(), name='viscosity')
-chk.load(h_viscosity)
-chk.close()
-chk = DumbCheckpoint('manning', mode=FILE_READ)
-manning = Function(bathymetry2d.function_space(), name='manning')
-chk.load(manning)
-chk.close()
-
 # --- create solver ---
-solverObj = solver2d.FlowSolver2d(mesh, bathymetry2d)
+solverObj = solver2d.FlowSolver2d(mesh, Constant(10.0))
 options = solverObj.options
 options.use_nonlinear_equations = True
 options.simulation_export_time = t_export
@@ -60,10 +44,8 @@ options.simulation_end_time = t_end
 options.output_directory =  thetis_dir
 options.check_volume_conservation_2d = True
 options.fields_to_export = ['uv_2d', 'elev_2d']
-options.fields_to_export_hdf5 = ['uv_2d', 'elev_2d']
-
-options.manning_drag_coefficient = manning #the manning function we created in initialisation & loaded above
-options.horizontal_viscosity = h_viscosity #the viscosity 'cushion' we created in initialisation & loaded above
+options.manning_drag_coefficient = Constant(1.0)
+options.horizontal_viscosity = Constant(1.0)
 options.coriolis_frequency = Constant(1.0)
 options.timestep = dt
 options.use_grad_div_viscosity_term = True
@@ -75,18 +57,12 @@ options.timestepper_options.implicitness_theta = 1.0
 options.timestepper_options.use_semi_implicit_linearization = True
 options.use_grad_div_viscosity_term = True
 options.use_grad_depth_viscosity_term = False
-options.timestepper_options.solver_parameters = {
-     'snes_rtol': 1e-5,
-     'snes_max_it': 100,
-     'ksp_type': 'preonly',
-}
 
 # set boundary/initial conditions code
 tidal_elev = Function(bathymetry2d.function_space())
 solverObj.bnd_functions['shallow_water'] = {
     666: {'elev': 0.0},
     1000: {'un': 0.0},
-    #2000: {'un': 0.0},
     #set closed boundaries to zero velocity
 }
 
@@ -153,21 +129,33 @@ for i in range(uv.dat.data.shape[0]): # loop over nodes in the Function mesh
 avespeed = Function(P1DG, name="AveSpeed")
 avespeed.dat.data[:] = np.array(ave_speed)
 File( output_dir + '/average_speed.pvd').write(avespeed)
+chk = DumbCheckpoint(output_dir + '/average_speed', mode=FILE_CREATE)
+chk.store(maxfs, name='AveSpeed')
 maxspeed = Function(P1DG, name="MaxSpeed")
 maxspeed.dat.data[:] = np.array(max_speed)
 File( output_dir + '/max_speed.pvd').write(maxspeed)
+chk = DumbCheckpoint(output_dir + '/max_speed', mode=FILE_CREATE)
+chk.store(maxfs, name='MaxSpeed')
 avebss = Function(P1DG, name="AveBSS")
 avebss.dat.data[:] = np.array(ave_bss)
 File( output_dir + '/average_bss.pvd').write(avebss)
+chk = DumbCheckpoint(output_dir + '/average_bss', mode=FILE_CREATE)
+chk.store(maxfs, name='AveBSS')
 maxbss = Function(P1DG, name="MaxBSS")
 maxbss.dat.data[:] = np.array(max_bss)
 File( output_dir + '/max_bss.pvd').write(maxbss)
+chk = DumbCheckpoint(output_dir + '/max_bss', mode=FILE_CREATE)
+chk.store(maxfs, name='MaxBSS')
 # now the vectors
 avevel = Function(V, name='ave_vel')
 avevel.dat.data[:] = np.array(ave_vel)
 File( output_dir + '/average_vel.pvd').write(avevel)
+chk = DumbCheckpoint(output_dir + '/average_vel', mode=FILE_CREATE)
+chk.store(maxfs, name='AveVel')
 maxvel = Function(V, name='max_vel')
 maxvel.dat.data[:] = np.array(max_vel)
 File( output_dir + '/max_vel.pvd').write(maxvel)
+chk = DumbCheckpoint(output_dir + '/max_vel', mode=FILE_CREATE)
+chk.store(maxfs, name='MaxVel')
 
 
