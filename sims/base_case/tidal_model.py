@@ -1,8 +1,11 @@
 from thetis import *
 # this imports our tidal forcing. If you want fes, comment out and uncomment the FES line
 import tidal_forcing_tpxo as tidal_forcing
-import tidal_forcing_fes as tidal_forcing
+#import tidal_forcing_fes as tidal_forcing
 import utm
+import sys
+import os.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
 
 mesh = Mesh(params.mesh_file)

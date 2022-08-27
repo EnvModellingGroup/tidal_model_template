@@ -1,0 +1,1 @@
+This dir is for all mesh related files. It should, at minimum, contain your shapefile for the mesh, a .geo file and a .msh file. FLD files and other shapefils for meshing will also live here.

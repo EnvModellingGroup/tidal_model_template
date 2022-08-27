@@ -1,5 +1,8 @@
 import uptide
 import uptide.tidal_netcdf
+import sys
+import os.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
 
 # Which constiuents do you want?

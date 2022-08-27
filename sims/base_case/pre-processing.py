@@ -1,5 +1,8 @@
 from thetis import *
 import hrds
+import sys
+import os.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
 
 mesh2d = Mesh(params.mesh_file) # mesh file

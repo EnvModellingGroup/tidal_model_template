@@ -1,0 +1,12 @@
+For model runs create a directory for each simulation set-up. You often set these up *after* running the base case. However, you don't want to copy all the output too.
+
+The easiest way of copying the base-case once it's been used to run a model is:
+mkdir new_sim
+cp base_case/*.py new_sim/
+cp base_case/*.pbs new_sim/
+
+This will copy the python and viking scripts in the new directory, but not the __pycache__ and output folders
+
+Try and avoid putting any common data file in directories in here - put then in data. Likewise, but meshes in the mesh directory. You can point to them via the python scripts.
+
+The params.py file lives above the individual simulation directories. This contains all the common parameters. You can override them in any individual simulation as you see fit. 

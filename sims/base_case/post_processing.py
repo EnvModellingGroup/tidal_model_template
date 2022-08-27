@@ -3,8 +3,10 @@ import datetime
 import uptide
 from thetis import *
 import utm
-import sys
 import uptide.tidal_netcdf
+import sys
+import os.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
 
 # which mesh to load?
