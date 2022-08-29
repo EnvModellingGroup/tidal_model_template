@@ -1,13 +1,14 @@
 import numpy as np
 import qgis.core
 import sys
-import qmesh
+import qmesh3
 
+# EDIT ME #
 shp_file = "../mesh/simulation_boundaries.shp"
-output_mask = "../mesh/mask.shp"
 
-#Initialising qgis API
-qmesh.initialise()
+#############################################
+
+output_mask = "../mesh/mask.shp"
 #Reading in the shapefile describing the domain boundaries, and creating a gmsh file.
 boundaries = qmesh.vector.shapefileTools.Shapes()
 boundaries.fromFile(shp_file)

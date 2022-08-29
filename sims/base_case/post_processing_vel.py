@@ -19,7 +19,7 @@ BSS_TS = False
 # Make sure below matches your main run file as much as possible
 # *if* anything goes wrong with the analysis
 #============================================================#
-mesh = Mesh(params.mesh_file) # mesh file
+mesh2d = Mesh(os.path.join(os.path.pardir,os.path.pardir,params.mesh_file))
 
 # How long does your simulations run for (s)
 t_end = params.end_time # which is the start file?

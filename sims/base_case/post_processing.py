@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 import params
 
 # which mesh to load?
-mesh = Mesh(params.mesh_file)
+mesh2d = Mesh(os.path.join(os.path.pardir,os.path.pardir,params.mesh_file))
 
 # where should the output of this analysis go
 output_dir = 'analysis'
@@ -19,17 +19,18 @@ create_directory(output_dir)
 # where did thetis put the hdf5 files?
 file_location = params.output_dir + '/hdf5/' #location of the Elevation2d output files
 
-
 # How long does your simulations run for (s)
 t_end = params.end_time #40 days (i.e. 30 days of analysis)
 # how often are exports produced in the main run?
 t_export = params.output_time
 # which is the start file?
-start_file = params.spin_up / t_export
+start_file = int(params.spin_up / t_export)
 
 # Which tidal consituents to analyse?
 constituent_order = ['M2', 'S2', 'N2', 'K2', 'K1', 'O1', 'P1', 'Q1', 'M4', 'MS4', 'MN4'] #LEAVE
 constituents = params.constituents
+# alter the ones used based on the Rayleigh Criterion
+constituents = uptide.select_constituents(constituents, t_end - params.spin_up)
 
 # You shouldn't need to edit below here
 #========================================

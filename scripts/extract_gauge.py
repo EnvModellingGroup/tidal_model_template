@@ -2,27 +2,27 @@ import numpy as np
 from matplotlib import pyplot as plt
 import datetime
 import uptide
-from firedrake import *
 from thetis import *
 import utm
 import sys
 import csv
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "sims")))
+import params
 
-tide_gauges = "gbr_gauges_utm56.csv"
-run_dir = "/home/jh1889/filestore/eem530/SLR110/"
-mesh_file = "test.msh"
-t_end = 2419200 # 28 days (so 14 day plot) 3455100 # 40 days-ish
-start_file = 1344 # 14 days
-t_export = 900
+# EDIT ME #
+run_dir = "../sims/SLR110/"
+tide_gauges = "../data/gbr_gauges_utm56.csv"
 
-mesh = Mesh(os.path.join(run_dir,mesh_file))
+#####################################
 
+mesh_file = os.path.join(os.path.pardir,params.mesh_file)
+mesh = Mesh(mesh_file)
 # now load in the tide gauge locations
 # how long is the input? 
 tide_gauge_data = {}
 try:
     with open(tide_gauges, 'r') as csvfile:
-        # need to read in a couple of lines, rather thana set of bytes
+        # need to read in a couple of lines, rather than a set of bytes
         # for sniffer to work properly
         temp_lines = csvfile.readline() + '\n' + csvfile.readline()
         dialect = csv.Sniffer().sniff(temp_lines, delimiters=",\t")
@@ -47,8 +47,8 @@ for loc in tide_gauge_data:
     location = (float(tide_gauge_data[loc]['Y']),float(tide_gauge_data[loc]['X']))
     gauge_locs.append((location[1],location[0]))
 
-file_location = os.path.join(run_dir,'hdf5/') #location of the Elevation2d output files
-t_n = int(t_end/t_export + 1)
+file_location = os.path.join(run_dir,params.output_dir,'hdf5/') #location of the Elevation2d output files
+t_n = int(params.end_time/params.output_time + 1)
 thetis_times = t_export*np.arange(t_n) + t_export
 P1 = FunctionSpace(mesh, "CG", 1)
 P2 = FunctionSpace(mesh, "DG", 1)
@@ -62,4 +62,4 @@ for i in range(start_file,t_n):
     elev_data_set[i-start_file, :] = elev.at(gauge_locs,dont_raise=True)
 
 
-np.savetxt("model_gauges_slr110.csv", elev_data_set, delimiter=",")
+np.savetxt(os.path.join(run_dir,"model_tide_gauges.csv"), elev_data_set, delimiter=",")
