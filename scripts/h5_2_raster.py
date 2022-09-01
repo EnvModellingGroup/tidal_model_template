@@ -6,30 +6,35 @@ import math
 import numpy as np
 import argparse
 
+
+mapping = {
+        'tidal_range': "TidalRange",
+        'min_fs' : 'MinFS',
+        'max_fs' : 'MaxFS',
+        }
+
 #create function
 def main():
 
     parser = argparse.ArgumentParser(
          prog="create_raster_from_h5",
-         description="""Will create set of velocity raster files (U and V) for each h5 file from a thetis run"""
+         description="""Will create a raster files for a h5 file"""
     )
-    # decision on resolution and extent of raster
     parser.add_argument(
             '--resolution',
-            help="Set the resolution of the XY file. Default is 1000m",
+            help="Set the resolution of the XY file. Default is 5000m",
             type=float,
-            default=1000
-            )
-    # guessing I need the below as it was the same in create_raster_vel
-    parser.add_argument(
-            'input_directory',
-            metavar='input_directory',
-            help='The output directory of your run. Which will be our input for this script'
+            default=5000
             )
     parser.add_argument(
-            'output_filexyz',
+            'input_file',
+            metavar='input_file',
+            help='The h5 file to rasterise. Without the .h5'
+            )
+    parser.add_argument(
+            'output_file',
             metavar='output_file',
-            help='The output raster file stub. _u and _t will be added to this, e.g. ~/path/12ka_u_111.xyz'
+            help='The output xyz file. We add the xyz extension'
             )
     parser.add_argument(
             'mesh',
@@ -37,11 +42,15 @@ def main():
             help='The mesh file.'
             )
     parser.add_argument(
-            'min_max',
-            metavar='min_max',
+            '--min_max',
             type=float,
             nargs=4,
-            help='The min and max of x and y in order: minx maxx miny maxy'
+            help='The min and max of x and y in order: minx maxx miny maxy. Default is whole domain'
+            )
+    parser.add_argument(
+            '--velocity',
+            action="store_true",
+            help='Your h5 file is a velocity, so a U and V raster will be produced',
             )
     parser.add_argument(
             '-v',
@@ -50,39 +59,51 @@ def main():
             help="Verbose output: mainly progress reports.",
             default=False
             )
-    parser.add_argument(
-            '--tend',
-            type=float,
-            help="End time of simulation or when you want to stop. Default 3455100 seconds",
-            default=3455100
-            )
-    parser.add_argument(
-            '--tstart',
-            type=float,
-            help="start time of simulation or when you want to start. Default 1209600 seconds",
-            default=1209600
-            )
-    parser.add_argument(
-            '--texport',
-            type=float,
-            help="Export time of the simulation. Default 900 seconds",
-            default=900
-            )
     args = parser.parse_args()
     verbose = args.verbose
     resolution = args.resolution
-    input_dir = args.input_directory
+    input_file = args.input_file
     meshfile = args.mesh
-    min_max = args.min_max
-    x_min = min_max[0]
-    x_max = min_max[1]
-    y_min = min_max[2]
-    y_max = min_max[3]
-    output_filexyz = args.output_filexyz
-    t_end = args.tend
-    t_start = args.tstart
-    t_export = args.texport
+    output_file = args.output_file
+    velocity = args.velocity
+    
+    #load Mesh
+    mesh2d = Mesh(meshfile)
 
+    min_max = args.min_max
+    if min_max == None:
+        # produces coords per core. Damn.
+        min_coords = np.amin(mesh2d.coordinates.dat.data_ro, axis=0)
+        max_coords = np.amax(mesh2d.coordinates.dat.data_ro, axis=0)
+        x_min = min_coords[0]
+        y_min = min_coords[1]
+        x_max = max_coords[0]
+        y_max = max_coords[1]
+        comm = COMM_WORLD
+        # so we need to do an all reduce
+        import mpi4py.MPI
+        global_x_max = np.zeros(1)
+        global_x_min = np.zeros(1)
+        global_y_max = np.zeros(1)
+        global_y_min = np.zeros(1)
+        comm.Barrier()
+        comm.Allreduce(x_max, global_x_max, op=MPI.MAX)
+        comm.Allreduce(x_min, global_x_min, op=MPI.MIN)
+        comm.Allreduce(y_max, global_y_max, op=MPI.MAX)
+        comm.Allreduce(y_min, global_y_min, op=MPI.MIN)
+        comm.Barrier()
+        x_min = global_x_min[0]
+        x_max = global_x_max[0]
+        y_min = global_y_min[0]
+        y_max = global_y_max[0]
+    else:
+        x_min = min_max[0]
+        x_max = min_max[1]
+        y_min = min_max[2]
+        y_max = min_max[3]
+
+    if verbose:
+        PETSc.Sys.Print("Coords: ", x_min, y_min, x_max, y_max)
 
     # we create a list of 2D points. These are the centre points of the raster we want
     # hence the resolution/2
@@ -95,82 +116,62 @@ def main():
         for x in x_coords:
             raster_coords.append([x,y])
 
-    #load Mesh
-    # for testing against the rectabgle_tsunami test (which has hard coded mesh)
-    #mesh = RectangleMesh(500,250,100000.,50000.)
-    mesh = Mesh(meshfile)
+    # create our function, note this is assumed to be DG
+    P1_2d = FunctionSpace(mesh2d, 'DG', 1)
+    function = Function(P1_2d)
 
-    # and --- create solver ---
-    # Dummy: not actually used. Just use it to store the h5 data in
-    solverObj = solver2d.FlowSolver2d(mesh, Constant(100))
-    options = solverObj.options
-    options.use_nonlinear_equations = True
-    options.simulation_export_time = t_export
-    options.simulation_end_time = t_end
-    options.output_directory =  input_dir
-    options.check_volume_conservation_2d = True
-    options.fields_to_export = ['uv_2d', 'elev_2d']
-    options.fields_to_export_hdf5 = ['uv_2d', 'elev_2d']
-
-    options.manning_drag_coefficient = Constant(1.0)
-    options.horizontal_viscosity = Constant(1.0)
-    options.coriolis_frequency = Constant(1.0)
-    options.timestep = 1.0
-    options.use_grad_div_viscosity_term = True
-    options.use_wetting_and_drying = False
-    # THis is where the p1DG is set up. Here for both elev and uv
-    options.element_family = "dg-dg"
-    options.swe_timestepper_type = 'CrankNicolson'
-    options.use_grad_div_viscosity_term = True
-    options.use_grad_depth_viscosity_term = False
-
-    # work out the export numbers, t_n and the times
-    t_n = range(int(t_start/t_export),int((t_end/t_export) + 1))
-    thetis_times = np.arange(t_start, t_end+(t_export/2), t_export)
-
-    # create empty 2D arrays - same size as the raster. One for u, one for v
+    # create empty 2D arrays - same size as the raster.
+    # One for u, one for v
     # these arrays should match the size of the *output* raster file
-    u_data_set = np.empty(len(raster_coords))
-    print(np.shape(u_data_set))
-    v_data_set = np.empty(len(raster_coords))
+    if (velocity):
+        u_data_set = np.empty(len(raster_coords))
+        v_data_set = np.empty(len(raster_coords))
+    else:
+        data_set = np.empty(len(raster_coords))
 
     # loop over the requested h5 files, pulling out the velocity at
     # our raster points, then saving to xyz files for each output
-    for t in t_n:
-        PETSc.Sys.Print('Reading h5 files. Time ',t,t*t_export)
-        solverObj.load_state(t)
-        uv, elev = solverObj.timestepper.solution.split()
-        uv_raster = uv.at(raster_coords,dont_raise=True)
-        # if we have points outside mesh, we get a single none back
-        # this messes up the stack, so swap them for a null array instead
-        uv_raster = np.array([ np.array([None,None]) if d is None else d for d in uv_raster ])
-        print(np.shape(uv_raster))
-        # uv raster is a list of 2-element np arrays
-        # stck so we can slice and extract the u's and v's
-        print(uv_raster)
-        u_data_set = np.stack(uv_raster,0)[:,0]
-        v_data_set = np.stack(uv_raster,0)[:,1]
+    head, tail = os.path.split(input_file)
+    func_name = mapping[tail]
+    if verbose:
+        PETSc.Sys.Print('Reading h5 file: ', input_file)
+        PETSc.Sys.Print('Looking for: ', func_name)
 
-        # write u to file
-        u_filename = output_filexyz + "_u_" + f'{t:05}' + ".xyz"
-        with open(u_filename,"w") as f:
-            for p,u in zip(raster_coords,u_data_set):
-                f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(u) + "\n")
+    with DumbCheckpoint(input_file, mode=FILE_READ, comm=function.comm) as f:
+        f.load(function,name=func_name)
+        data_raster = function.at(raster_coords,dont_raise=True)
 
-        # write v file
-        v_filename = output_filexyz + "_v_" + f'{t:05}' + ".xyz"
-        with open(v_filename,"w") as f:
-            for p,v in zip(raster_coords,v_data_set):
-                f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(v) + "\n")
+        if velocity:
+            # if we have points outside mesh, we get a single none back
+            # this messes up the stack, so swap them for a null array instead
+            data_raster = np.array([ np.array([None,None]) if d is None else d for d in data_raster ])
+            # uv raster is a list of 2-element np arrays
+            # stck so we can slice and extract the u's and v's
+            u_data_set = np.stack(data_raster,0)[:,0]
+            v_data_set = np.stack(data_raster,0)[:,1]
 
-    # as a niceity, we also write out the time steps to another file
-    t_filename = output_filexyz + "_times_thetis.txt"
-    with open(t_filename,"w") as f:
-        for t in thetis_times:
-            f.write(str(t) + "\n")
-
-
-
+            # write u to file
+            u_filename = output_filexyz + "_u_" + ".xyz"
+            with open(u_filename,"w") as f:
+                for p,u in zip(raster_coords,u_data_set):
+                    if u == None:
+                        u = -9999
+                    f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(u) + "\n")
+            # write v file
+            v_filename = output_file + "_v_" + ".xyz"
+            with open(v_filename,"w") as f:
+                for p,v in zip(raster_coords,v_data_set):
+                    if v == None:
+                        v = -9999
+                    f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(v) + "\n")
+        else:
+            data_set = np.stack(data_raster,0)
+            filename = output_file + ".xyz"
+            with open(filename,"w") as f:
+                for p,u in zip(raster_coords,data_set):
+                    if u == None:
+                        u = -9999
+                    f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(u) + "\n")
 
 
 if __name__ == "__main__":
