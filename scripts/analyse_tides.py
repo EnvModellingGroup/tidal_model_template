@@ -8,24 +8,32 @@ import csv
 import sys
 import os
 import uptide
-import utm
+import pandas as pd
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "sims")))
 import params
 
 # EDIT ME #
 plt.rcParams.update({'font.size': 22})
-run_dir = "../sims/SLR110/"
-tide_gauges = "../data/gbr_gauges_utm56.csv"
+
+model_input = "../sims/base_case/model_tide_gauges.csv"
+tide_gauges = "../data/uk_all_gagues_UTM30.csv"
+
+constituents_to_plot = ["M2", "S2", "K1", "O1"]
 
 #################################################
 # assumes you're run extract_guage.py and obtained the file for that
 
 
 constituents = params.constituents
-startdate = params.start_datetime
+start_date = params.start_datetime
 tide = uptide.Tides(constituents)
 tide.set_initial_time(start_date)
- 
+
+# output dir is the run name, minus the csv file, which we discard
+output_dir, filename = os.path.split(model_input)
+# try make the output dir
+os.makedirs(os.path.join(output_dir,"Tidal_validation"), exist_ok=True)
+
 # read in tide gauge data, so let's do easiest to hardest...
 # how long is the input? 
 tide_gauge_data = {}
@@ -58,16 +66,24 @@ except csv.Error:
 #{location_name: {M2Amp: x, M2Phase:, y, etc, etc}
 
 ignore = []
-thetis_times = np.arange(params_spin_up, params.end_time, params.output_time)
-model_elevs = np.loadtxt(os.path.join(run_dir,"model_tide_gauges.csv"), elev_data_set, delimiter=",")
-i = 0
-for g in tg_order:
+model_data = {}
+thetis_times = np.arange(params.spin_up, params.end_time+1, params.output_time)
+df = pd.read_csv(model_input, header=None)
+
+for name in tg_order:
+    # pull amplitude
+    idx = tg_order.index(name)
     # Subtract mean
-    thetis_elev = model_elevs[:,i]
+    thetis_elev = df.iloc[:, idx]
     thetis_elev = thetis_elev - thetis_elev.mean()
     thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev, thetis_times)
-    # ad to dict
-    i += 1
+    thetis_data = {}
+    i = 0
+    for c in constituents:
+        thetis_data[c+"_amp"] = thetis_amplitudes[i]
+        thetis_data[c+"_phase"] = thetis_phases[i]
+        i += 1
+    model_data[name] = thetis_data
 
 
 # Now compare model to tide gagues
@@ -121,13 +137,12 @@ for t in constituents:
     
 average_amp = np.array(average_amp)
 errors = np.array(errors)
-print("Error to Model")
-print("components:", constituents)
-print("error:", errors/len(obs_amps))
-print("Gauge av amp:", average_amp)
-print("Relative err:",  ((errors/len(obs_amps)) / average_amp))
-print("No. stations valid:", len(obs_amps))
-with open(output_stub+"_thetis_stations.csv", 'w') as f:
+print("Error to Model:")
+# create a prettier table using Pandas (as we've loaded this already)
+dataframe = [errors/len(obs_amps), average_amp,  ((errors/len(obs_amps)) / average_amp)]
+print(pd.DataFrame(dataframe, ["Error", "Gauge av. amp", "Relative err"], constituents))
+print("\nNo. stations valid:", len(obs_amps), "\n")
+with open(os.path.join(output_dir,"Tidal_validation","thetis_vs_stations.csv"), 'w') as f:
     writer = csv.writer(f)
     for lt,ln,name in zip(lats,lons,names):
         writer.writerow([name,ln,lt])
@@ -135,8 +150,9 @@ with open(output_stub+"_thetis_stations.csv", 'w') as f:
 
 # fluidity to tide gauge plot
 fig = plt.figure(figsize=(15,15),dpi=180)
+n_plots = len(constituents_to_plot)
 i = 0
-for t in constituents:
+for t in constituents_to_plot:
     obs_amps = []
     obs_phases = []
     model_amps = []
@@ -159,7 +175,7 @@ for t in constituents:
     model_amps = np.delete(model_amps, index_to_remove)
     obs_amps = np.delete(obs_amps, index_to_remove)
 
-    ax = fig.add_subplot(2,2,i+1)
+    ax = fig.add_subplot(math.ceil(n_plots/2),2,i+1)
 
     # get StdDev for the observed amps
     std_dev = np.std(obs_amps)
@@ -193,9 +209,9 @@ for t in constituents:
     ax.set_ylabel("Gauges amp (m)")
     i += 1 #  counter for model data
 
-    print(r_value, p_value, std_err)
+    print(t, r_value, p_value, std_err)
 
 plt.subplots_adjust(wspace=0.4,hspace=0.4)
-plt.savefig(output_stub+"_thetis_obs.pdf", dpi=180)
+plt.savefig(os.path.join(output_dir,"Tidal_validation","thetis_vs_obs.pdf"), dpi=180)
  
 
