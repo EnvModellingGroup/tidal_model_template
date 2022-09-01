@@ -65,9 +65,9 @@ options.simulation_export_time = t_export
 options.simulation_end_time = t_end
 options.output_directory =  output_dir
 options.check_volume_conservation_2d = True
-options.fields_to_export = ['uv_2d', 'elev_2d']
+#options.fields_to_export = ['uv_2d', 'elev_2d']
+options.fields_to_export = []
 options.fields_to_export_hdf5 = ['uv_2d', 'elev_2d']
-
 options.manning_drag_coefficient = manning #the manning function we created in initialisation & loaded above
 options.horizontal_viscosity = h_viscosity #the viscosity 'cushion' we created in initialisation & loaded above
 options.coriolis_frequency = coriolis_2d
