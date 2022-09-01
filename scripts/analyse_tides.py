@@ -18,7 +18,7 @@ plt.rcParams.update({'font.size': 22})
 model_input = "../sims/base_case/model_tide_gauges.csv"
 tide_gauges = "../data/uk_all_gagues_UTM30.csv"
 
-constituents_to_plot = ["M2", "S2", "K1", "O1"]
+constituents_to_plot = ["M2", "S2", "K1", "O1", "M4"]
 
 #################################################
 # assumes you're run extract_guage.py and obtained the file for that
@@ -199,7 +199,7 @@ for t in constituents_to_plot:
     ax.plot(x1,y1,'-r')
     
 
-    ax.set_title(constituents[i])
+    ax.set_title(t)
     # set equal, then adjust boundas
     plt.axis('equal')
     ax.set_xbound(lower=0,upper=lim)
