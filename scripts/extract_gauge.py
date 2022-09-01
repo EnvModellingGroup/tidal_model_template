@@ -3,15 +3,14 @@ from matplotlib import pyplot as plt
 import datetime
 import uptide
 from thetis import *
-import utm
 import sys
 import csv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "sims")))
 import params
 
 # EDIT ME #
-run_dir = "../sims/SLR110/"
-tide_gauges = "../data/gbr_gauges_utm56.csv"
+run_dir = "../sims/base_case/"
+tide_gauges = "../data/uk_all_gagues_UTM30.csv"
 
 #####################################
 
@@ -49,13 +48,14 @@ for loc in tide_gauge_data:
 
 file_location = os.path.join(run_dir,params.output_dir,'hdf5/') #location of the Elevation2d output files
 t_n = int(params.end_time/params.output_time + 1)
-thetis_times = t_export*np.arange(t_n) + t_export
+thetis_times = params.output_time*np.arange(t_n) + params.output_time
+start_file = int(params.spin_up / params.output_time)
 P1 = FunctionSpace(mesh, "CG", 1)
 P2 = FunctionSpace(mesh, "DG", 1)
 elev = Function(P2, name='elev_2d')
 elev_data_set = np.empty((t_n-start_file, len(gauge_locs)))
 for i in range(start_file,t_n):
-    print('Reading h5 files. Time ',i,i*t_export)
+    print('Reading h5 files. Time ',i,i*params.output_time)
     checkpoint_file = DumbCheckpoint(file_location + '/Elevation2d_{:05}'.format(i),    mode=FILE_READ)
     checkpoint_file.load(elev)
     checkpoint_file.close()

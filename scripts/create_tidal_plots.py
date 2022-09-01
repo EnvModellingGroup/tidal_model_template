@@ -5,15 +5,47 @@ import datetime
 import csv
 import pandas as pd
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "sims")))
+import params
+import re
 
-constituents = ['M2', 'S2', "K1", "O1", "P1", "N2", "K2", "Q1" ]
+model_input = "../sims/base_case/model_tide_gauges.csv"
+tide_gauges = "../data/uk_all_gagues_UTM30.csv"
+
+########################################################
+
+def tex_escape(text):
+    """
+        :param text: a plain text message
+        :return: the message escaped to appear correctly in LaTeX
+    """
+    conv = {
+        '&': r'\&',
+        '%': r'\%',
+        '$': r'\$',
+        '#': r'\#',
+        '_': r'\_',
+        '{': r'\{',
+        '}': r'\}',
+        '~': r'\textasciitilde{}',
+        '^': r'\^{}',
+        '\\': r'\textbackslash{}',
+        '<': r'\textless{}',
+        '>': r'\textgreater{}',
+    }
+    regex = re.compile('|'.join(re.escape(str(key)) for key in sorted(conv.keys(), key = lambda item: - len(item))))
+    return regex.sub(lambda match: conv[match.group()], text)
+
+
+constituents = params.constituents
 tide = uptide.Tides(constituents)  # select which constituents to use
-tide.set_initial_time(datetime.datetime(2005,11,11,10,0,0)) 
-model_input = "model_gauges_oti_hires.csv"
-tide_gauges = "../data/tide_gauge_2.csv"
-t_end =  1548900
-t_start = 172800
-t_export = 900
+tide.set_initial_time(params.start_datetime) 
+
+t_start = params.spin_up
+t_export = params.output_time
+t_end = params.end_time
+
 colours = ['#377eb8', '#ff7f00', '#4daf4a',
            '#a65628', '#984ea3', '#f780bf',
            '#999999', '#e41a1c', '#dede00']
@@ -30,6 +62,10 @@ params = {
     }
 plt.rcParams.update(params)
 
+# output dir is the run name, minus the csv file, which we discard
+output_dir, filename = os.path.split(model_input)
+# try make the output dir
+os.makedirs(os.path.join(output_dir,"Tidal_Gauges"), exist_ok=True)
 
 # how long is the input? 
 tide_gauge_data = {}
@@ -58,16 +94,9 @@ except csv.Error:
     print(tide_gauges[0])
     sys.exit(1)
 
-
-
 # list which gauges want plotting
-model_times = np.arange(t_start,t_end,t_export)
+model_times = np.arange(t_start,t_end+1,t_export)
 df = pd.read_csv(model_input, header=None)
-# cols are the tide gauges in same order and names above (tg_order)
-print(df.shape)
-# start and end indices
-start_idx = int(t_start / t_export)
-end_idx = int(t_end / t_export)
 
 # now loop over tide gauges and plot them.
 for name in tg_order:
@@ -85,14 +114,16 @@ for name in tg_order:
     fig_summary=plt.figure(figsize=(12.0,6),dpi=360)
     ax=fig_summary.add_subplot(111)
 
+    # Prettier and fixes LaTeX issue
+    nice_name = tex_escape(name.replace("_"," ").title())
     obs_ln = ax.plot(t / 86400., eta, color="grey", lw=2, label="Tide gauge", alpha=0.4)
-    mod_ln = ax.plot(np.array(model_times) / 86400., df.iloc[start_idx:end_idx, idx], color=colours[0],lw=1, label="Model")
+    mod_ln = ax.plot(np.array(model_times)/86400., df.iloc[:, idx], color=colours[0], lw=1, label="Model")
     ax.set_xlabel("Time (days)")
     ax.set_ylabel("Water height (m)")
     lns = mod_ln + obs_ln
     labs = [l.get_label() for l in lns]
     leg = ax.legend(lns, labs, loc='lower right',ncol=1)
     leg.get_frame().set_edgecolor('k')
-    ax.set_title(name.replace("_"," "))
-    plt.savefig("tidal_plot_hi/tidal_plots_mod_all_"+name+".png", dpi=180)
+    ax.set_title(nice_name)
+    plt.savefig(os.path.join(output_dir,"Tidal_Gauges","tidal_plot"+name+".png"), dpi=180)
     plt.close()
