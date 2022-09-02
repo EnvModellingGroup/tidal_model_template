@@ -5,13 +5,37 @@ import sys
 import math
 import numpy as np
 import argparse
+import uptide
+from re import search
 
-
+# is there are any other possible h5 output files, you'll need to add to this mapping
+# Mapping is filename (without h5 extension) to the function name
+# chk = DumbCheckpoint('tidal_range', mode=FILE_CREATE)
+# chk.store(tr, name='TidalRange')
+# would map to "tidal_range" : "TidalRange"
 mapping = {
         'tidal_range': "TidalRange",
         'min_fs' : 'MinFS',
         'max_fs' : 'MaxFS',
+        'average_speed' : "AveSpeed",
+        'max_speed' : "MaxSpeed",
+        'average_bss' : "AveBSS",
+        'max_bss' : "MaxBSS",
+        'average_vel' : "AveVel",
+        'max_vel' : "MaxVel",
+        'Elevation2d' : "elev_2d",
+        'Velocity2d' : "uv_2d",
         }
+
+# add all possible tidal components to mapping
+for c in uptide.ALL_FES2014_TIDAL_CONSTITUENTS:
+    mapping[c+"_amp"] = c+"_amp"
+    mapping[c+"_phase"] = c+"_phase"
+    mapping[c+"_phase_mod_pi"] = c+"_phase"
+
+# this re searchs for the timestep in the h5 file if it exists
+# _ followed by 5 digits.
+p = re.compile(r'_\d{5}')
 
 #create function
 def main():
@@ -31,11 +55,7 @@ def main():
             metavar='input_file',
             help='The h5 file to rasterise. Without the .h5'
             )
-    parser.add_argument(
-            'output_file',
-            metavar='output_file',
-            help='The output xyz file. We add the xyz extension'
-            )
+
     parser.add_argument(
             'mesh',
             metavar='mesh',
@@ -58,6 +78,11 @@ def main():
             action='store_true',
             help="Verbose output: mainly progress reports.",
             default=False
+            )
+    parser.add_argument(
+            'output_file',
+            metavar='output_file',
+            help='The output xyz file. We add the xyz extension and the thetis timestep if included in the input file.'
             )
     args = parser.parse_args()
     verbose = args.verbose
@@ -132,6 +157,13 @@ def main():
     # loop over the requested h5 files, pulling out the velocity at
     # our raster points, then saving to xyz files for each output
     head, tail = os.path.split(input_file)
+    # need to post_process tail (the filename) to check if it's not part of a timestep
+    m = p.search(tail)
+    if m:
+        tail = tail[0:m.start()]
+        timestep = m.group()
+    else:
+        timestep = None
     func_name = mapping[tail]
     if verbose:
         PETSc.Sys.Print('Reading h5 file: ', input_file)
@@ -151,14 +183,20 @@ def main():
             v_data_set = np.stack(data_raster,0)[:,1]
 
             # write u to file
-            u_filename = output_filexyz + "_u_" + ".xyz"
+            if timestep:
+                u_filename = output_file + "_u_" + timestep + ".xyz"
+            else:
+                u_filename = output_file + "_u" ".xyz"
             with open(u_filename,"w") as f:
                 for p,u in zip(raster_coords,u_data_set):
                     if u == None:
                         u = -9999
                     f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(u) + "\n")
             # write v file
-            v_filename = output_file + "_v_" + ".xyz"
+            if timestep:
+                v_filename = output_file + "_v_" + timestep + ".xyz"
+            else:
+                v_filename = output_file + "_v" ".xyz"
             with open(v_filename,"w") as f:
                 for p,v in zip(raster_coords,v_data_set):
                     if v == None:
@@ -166,7 +204,10 @@ def main():
                     f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(v) + "\n")
         else:
             data_set = np.stack(data_raster,0)
-            filename = output_file + ".xyz"
+            if timestep:
+                filename = output_file + "_" + timestep + ".xyz"
+            else:
+                filename = output_file + ".xyz"
             with open(filename,"w") as f:
                 for p,u in zip(raster_coords,data_set):
                     if u == None:
