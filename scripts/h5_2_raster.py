@@ -6,7 +6,7 @@ import math
 import numpy as np
 import argparse
 import uptide
-from re import search
+import re
 
 # is there are any other possible h5 output files, you'll need to add to this mapping
 # Mapping is filename (without h5 extension) to the function name
@@ -32,10 +32,6 @@ for c in uptide.ALL_FES2014_TIDAL_CONSTITUENTS:
     mapping[c+"_amp"] = c+"_amp"
     mapping[c+"_phase"] = c+"_phase"
     mapping[c+"_phase_mod_pi"] = c+"_phase"
-
-# this re searchs for the timestep in the h5 file if it exists
-# _ followed by 5 digits.
-p = re.compile(r'_\d{5}')
 
 #create function
 def main():
@@ -92,6 +88,8 @@ def main():
     output_file = args.output_file
     velocity = args.velocity
     
+    # check filename doesn't end in h5
+
     #load Mesh
     mesh2d = Mesh(meshfile)
 
@@ -142,7 +140,10 @@ def main():
             raster_coords.append([x,y])
 
     # create our function, note this is assumed to be DG
-    P1_2d = FunctionSpace(mesh2d, 'DG', 1)
+    if (velocity):
+        P1_2d = VectorFunctionSpace(mesh2d, 'DG', 1)
+    else:
+        P1_2d = FunctionSpace(mesh2d, 'DG', 1)
     function = Function(P1_2d)
 
     # create empty 2D arrays - same size as the raster.
@@ -157,6 +158,9 @@ def main():
     # loop over the requested h5 files, pulling out the velocity at
     # our raster points, then saving to xyz files for each output
     head, tail = os.path.split(input_file)
+    # this re searchs for the timestep in the h5 file if it exists
+    # _ followed by 5 digits.
+    p = re.compile(r'_\d{5}')
     # need to post_process tail (the filename) to check if it's not part of a timestep
     m = p.search(tail)
     if m:
@@ -184,7 +188,7 @@ def main():
 
             # write u to file
             if timestep:
-                u_filename = output_file + "_u_" + timestep + ".xyz"
+                u_filename = output_file + "_u" + timestep + ".xyz"
             else:
                 u_filename = output_file + "_u" ".xyz"
             with open(u_filename,"w") as f:
@@ -194,7 +198,7 @@ def main():
                     f.write(str(p[0]) + "\t" + str(p[1]) + "\t" + str(u) + "\n")
             # write v file
             if timestep:
-                v_filename = output_file + "_v_" + timestep + ".xyz"
+                v_filename = output_file + "_v" + timestep + ".xyz"
             else:
                 v_filename = output_file + "_v" ".xyz"
             with open(v_filename,"w") as f:
@@ -205,7 +209,7 @@ def main():
         else:
             data_set = np.stack(data_raster,0)
             if timestep:
-                filename = output_file + "_" + timestep + ".xyz"
+                filename = output_file + timestep + ".xyz"
             else:
                 filename = output_file + ".xyz"
             with open(filename,"w") as f:
