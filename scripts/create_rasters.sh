@@ -4,7 +4,7 @@ directory=$1
 ncore=$2
 mesh=$3
 
-resolution=5000
+resolution=10000
 projection=EPSG:32630
 
 # filenames to rasterise, without .h5 extension
@@ -17,9 +17,9 @@ declare -a varname=("tidal_range"
                       "S2_phase"
                       "K1_phase"
                       "O1_phase"
-                      "ave_speed"
+                      "average_speed"
                       "max_speed"
-                      "ave_bss"
+                      "average_bss"
                       "max_bss"
                      )
 
@@ -40,9 +40,9 @@ declare -a names=("Tidal Range (m)"
                  )
 
 # loop over variables
-for (( i=0; i<${#variables[@]}; i++));
+for (( i=0; i<${#varname[@]}; i++));
 do
-    var=${variables[$i]}
+    var=${varname[$i]}
     name=${names[$i]}
     echo ${var}
     file="${directory}/${var}"
@@ -54,7 +54,7 @@ do
     # create a filename
     filename="${directory}/${var}".nc
     #mask it
-    gdalwarp -cutline "${directory}/../mesh/mask.shp" -s_srs ${projection} -crop_to_cutline -of NetCDF -r bilinear  -dstnodata -9999 -overwrite temp.xyz "${filename}"
+    gdalwarp -cutline "../mesh/mask.shp" -s_srs ${projection} -crop_to_cutline -of NetCDF -r bilinear  -dstnodata -9999 -overwrite temp.xyz "${filename}"
     # rename the variable to something sensible
     ncrename -v Band1,"${var}" "${filename}"		
     # change the long name variable to contain decent info
