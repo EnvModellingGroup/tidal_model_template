@@ -91,7 +91,6 @@ if BSS_TS:
     bathy = bathydg.dat.data[:]
     bss_file = File( output_dir + '/bss.pvd')
 for i in range(start_file,int(t_end/t_export)+1):
-    #print('Reading h5 files. Time ',i,i*t_export)
     solverObj.load_state(i)
     u_data_set[count, :] = solverObj.fields.uv_2d.dat.data[:,0]
     v_data_set[count, :] = solverObj.fields.uv_2d.dat.data[:,1]
