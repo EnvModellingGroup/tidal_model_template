@@ -2,7 +2,6 @@ from thetis import *
 # this imports our tidal forcing. If you want fes, comment out and uncomment the FES line
 import tidal_forcing_tpxo as tidal_forcing
 #import tidal_forcing_fes as tidal_forcing
-import utm
 import sys
 import os.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
@@ -47,14 +46,13 @@ def coriolis(mesh, lat, lon):
     f0 = 2 * Omega * sin(lat_r)
     beta = (1 / R) * 2 * Omega * cos(lat_r)
     x = SpatialCoordinate(mesh)
-    x_0, y_0, utm_zone, zone_letter = utm.from_latlon(lat, lon)
+    x_0, y_0, utm_zone, zone_letter = params.from_latlon(lat, lon)
     coriolis_2d = Function(FunctionSpace(mesh, 'CG', 1), name="coriolis_2d")
     coriolis_2d.interpolate(f0 + beta * (x[1] - y_0))
 
     return coriolis_2d
 
-#account for Coriolis code - mesh, centre lat, centre lon
-coriolis_2d = coriolis(mesh, cent_lat, cent_lon)
+
 
 # --- create solver ---
 solverObj = solver2d.FlowSolver2d(mesh, bathymetry2d)

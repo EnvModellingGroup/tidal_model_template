@@ -55,6 +55,7 @@ do
     filename="${directory}/${var}".nc
     #mask it
     gdalwarp -cutline "../mesh/mask.shp" -s_srs ${projection} -crop_to_cutline -of NetCDF -r bilinear  -dstnodata -9999 -overwrite temp.xyz "${filename}"
+    # comment out these two lines on viking as neither ncrename or ncatted are avilable
     # rename the variable to something sensible
     ncrename -v Band1,"${var}" "${filename}"		
     # change the long name variable to contain decent info
