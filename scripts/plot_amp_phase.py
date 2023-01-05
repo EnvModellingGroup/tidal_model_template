@@ -13,7 +13,7 @@ import params
 import re
 from ampang import *
 
-model_input = "../sims/base_case/model_tide_gauges.csv"
+model_input = "../sims/base_case/model_gauges_elev.csv"
 tide_gauges = "../data/uk_all_gagues_UTM30.csv"
 
 

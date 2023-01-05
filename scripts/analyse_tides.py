@@ -15,7 +15,7 @@ import params
 # EDIT ME #
 plt.rcParams.update({'font.size': 22})
 
-model_input = "../sims/base_case/model_tide_gauges.csv"
+model_input = "../sims/base_case/model_gauges_elev.csv"
 tide_gauges = "../data/uk_all_gagues_UTM30.csv"
 
 constituents_to_plot = ["M2", "S2", "K1", "O1", "M4"]
