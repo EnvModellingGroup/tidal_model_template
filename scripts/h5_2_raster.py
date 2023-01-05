@@ -10,8 +10,8 @@ import re
 
 # is there are any other possible h5 output files, you'll need to add to this mapping
 # Mapping is filename (without h5 extension) to the function name
-# chk = DumbCheckpoint('tidal_range', mode=FILE_CREATE)
-# chk.store(tr, name='TidalRange')
+# chk = CheckpointFile('tidal_range', 'w')
+# chk.save_function(tr, name='TidalRange')
 # would map to "tidal_range" : "TidalRange"
 mapping = {
         'tidal_range': "TidalRange",
@@ -51,11 +51,14 @@ def main():
             metavar='input_file',
             help='The h5 file to rasterise. Without the .h5'
             )
-
     parser.add_argument(
             'mesh',
             metavar='mesh',
             help='The mesh file.'
+            )
+    parser.add_argument(
+            '--func',
+            help="Harcoded function name. Only used when using temporal_stat* or tidal_stat* files"
             )
     parser.add_argument(
             '--min_max',
@@ -87,6 +90,7 @@ def main():
     meshfile = args.mesh
     output_file = args.output_file
     velocity = args.velocity
+    func = args.func
     
     # check filename doesn't end in h5
 
@@ -158,23 +162,34 @@ def main():
     # loop over the requested h5 files, pulling out the velocity at
     # our raster points, then saving to xyz files for each output
     head, tail = os.path.split(input_file)
-    # this re searchs for the timestep in the h5 file if it exists
-    # _ followed by 5 digits.
-    p = re.compile(r'_\d{5}')
-    # need to post_process tail (the filename) to check if it's not part of a timestep
-    m = p.search(tail)
-    if m:
-        tail = tail[0:m.start()]
-        timestep = m.group()
-    else:
+    if (tail.startswith("temporal_stats")) :
+        # special case where the functions are in the same file
+        if (func == None):
+            PETSc.Sys.Print("Need to specify a function name via --func if using the temporal stats file")
+            sys.exit(-1)
+        func_name = func
         timestep = None
-    func_name = mapping[tail]
+    else:
+        # loop over the requested h5 files, pulling out the velocity at
+        # our raster points, then saving to xyz files for each output
+        # this re searchs for the timestep in the h5 file if it exists
+        # _ followed by 5 digits.
+        p = re.compile(r'_\d{5}')
+        # need to post_process tail (the filename) to check if it's not part of a timestep
+        m = p.search(tail)
+        if m:
+            tail = tail[0:m.start()]
+            timestep = m.group()
+        else:
+            timestep = None
+        func_name = mapping[tail]
     if verbose:
         PETSc.Sys.Print('Reading h5 file: ', input_file)
         PETSc.Sys.Print('Looking for: ', func_name)
 
-    with DumbCheckpoint(input_file, mode=FILE_READ, comm=function.comm) as f:
-        f.load(function,name=func_name)
+    with CheckpointFile(input_file, "r") as f:
+        mesh2d = f.load_mesh()
+        function = f.load_function(mesh2d,func_name)
         data_raster = function.at(raster_coords,dont_raise=True)
 
         if velocity:
