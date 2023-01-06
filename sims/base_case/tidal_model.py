@@ -21,17 +21,17 @@ cent_lat = params.cent_lat
 cent_lon = params.cent_lon
 
 # read bathymetry code
-chk = CheckpointFile('bathymetry', 'r')
+chk = CheckpointFile('bathymetry.h5', 'r')
 mesh = chk.load_mesh()
 bathymetry2d = chk.load_function(mesh,'bathymetry')
 chk.close()
 
 #read viscosity / manning boundaries code
-chk = CheckpointFile('viscosity', 'r')
+chk = CheckpointFile('viscosity.h5', 'r')
 mesh = chk.load_mesh()
 h_viscosity = chk.load_function(mesh,'viscosity')
 chk.close()
-chk = CheckpointFile('manning', 'r')
+chk = CheckpointFile('manning.h5', 'r')
 mesh = chk.load_mesh()
 manning = chk.load_function(mesh, 'manning')
 chk.close()
