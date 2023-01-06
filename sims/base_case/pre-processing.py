@@ -42,7 +42,7 @@ with timed_stage('initialising bathymetry'):
 
 smoothen_bathymetry(bathymetry2d)
 File('bathy.pvd').write(bathymetry2d)
-chk = CheckpointFile('bathymetry', 'w')
+chk = CheckpointFile('bathymetry.h5', 'w')
 chk.save_mesh(mesh2d)
 chk.save_function(bathymetry2d, name='bathymetry')
 
@@ -83,7 +83,7 @@ File('dist.pvd').write(u)
 
 # create a viscosity buffer
 #create boundary of increased viscosity
-chk = CheckpointFile('viscosity', 'w')
+chk = CheckpointFile('viscosity.h5', 'w')
 with timed_stage('initialising viscosity'):
     h_viscosity = Function(V, name='viscosity')
     h_viscosity.interpolate(Max(viscosity, (viscosity*1000) * (1. - u / blend_dist)))
@@ -93,7 +93,7 @@ with timed_stage('initialising viscosity'):
 
 # create a manning drag function
 #create manning boundary of increased bottom friction
-chk = CheckpointFile('manning', 'w')
+chk = CheckpointFile('manning.h5', 'w')
 with timed_stage('initialising manning'):
     manning = Function(V, name='manning')
     manning.interpolate(Max(manning_drag, (manning_drag*10) * (1. - u / blend_dist)))
