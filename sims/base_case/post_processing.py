@@ -183,14 +183,6 @@ with CheckpointFile(output_dir + '/tidal_stats_scal.h5', "w") as chk:
     tr.dat.data[:] = np.array(detector_tidal_range)
     chk.save_function(tr)
     File( output_dir + '/tidal_range.pvd').write(tr)
-    minfs = Function(P1DG, name="MinFS")
-    minfs.dat.data[:] = np.array(detector_minfs)
-    chk.save_function(minfs)
-    File( output_dir + '/min_fs.pvd').write(minfs)
-    maxfs = Function(P1DG, name="MaxFS")
-    maxfs.dat.data[:] = np.array(detector_maxfs)
-    chk.save_function(maxfs)
-    File( output_dir + '/max_fs.pvd').write(maxfs)
 
     for i in constituents:
         amp = Function(P1DG, name= i +'_amp')
