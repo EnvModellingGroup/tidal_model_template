@@ -12,6 +12,9 @@ import params
 output_dir = 'analysis'
 create_directory(output_dir)
 
+# where is the output of your model?
+thetis_dir = params.output_dir
+
 # was this run created with the CheckpointFile code? If so, make this True
 legacy_run = False
 
