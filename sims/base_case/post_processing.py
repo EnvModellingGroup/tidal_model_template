@@ -47,17 +47,18 @@ thetis_times = t_export*np.arange(t_n) + t_export
 
 P1 = FunctionSpace(mesh2d, "CG", 1)
 # read bathymetry code
-chk = CheckpointFile('bathymetry', mode=FILE_READ)
+chk = CheckpointFile('bathymetry.h5', mode=FILE_READ)
 bathymetry2d = Function(P1)
-chk.load(bathymetry2d,  name='bathymetry')
+msh = chk.load_mesh()
+bathymetry2d = chk.load_function(mesh,'bathymetry')
 chk.close()
-chk = CheckpointFile('manning', mode=FILE_READ)
-manning = Function(bathymetry2d.function_space(), name='manning')
-chk.load(manning)
+chk = CheckpointFile('manning.h5', mode=FILE_READ)
+mesh = chk.load_mesh()
+manning = chk.load_function(mesh, 'manning')
 chk.close()
 
 # --- create solver ---
-solverObj = solver2d.FlowSolver2d(mesh2d, bathymetry2d)
+solverObj = solver2d.FlowSolver2d(mesh2d, Constant(10))
 options = solverObj.options
 options.simulation_export_time = t_export
 options.simulation_end_time = t_end
