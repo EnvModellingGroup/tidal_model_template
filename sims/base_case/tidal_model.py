@@ -26,15 +26,12 @@ chk.close()
 
 #read viscosity / manning boundaries code
 chk = CheckpointFile('viscosity.h5', 'r')
-mesh2d = chk.load_mesh()
 h_viscosity = chk.load_function(mesh2d,'viscosity')
 chk.close()
 chk = CheckpointFile('manning.h5', 'r')
-mesh2d = chk.load_mesh()
 manning = chk.load_function(mesh2d, 'manning')
 chk.close()
 
-P1 = FunctionSpace(mesh, "CG", 1)
 # function to set up the Coriolis force
 # Depends on a "central" lat/lon point in
 # your mesh
@@ -111,6 +108,5 @@ def update_forcings(t):
     print_output("Updating tidal field at t={}".format(t))
     tidal_forcing.set_tidal_field(tidal_elev, t, llvector)
     print_output("Done updating tidal field")
-
 
 solverObj.iterate(update_forcings=update_forcings)
