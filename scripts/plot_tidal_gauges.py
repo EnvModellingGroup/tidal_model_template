@@ -95,7 +95,7 @@ except csv.Error:
     sys.exit(1)
 
 # list which gauges want plotting
-model_times = np.arange(t_start,t_end+1,t_export)
+model_times = np.arange(t_start,t_end,t_export)
 df = pd.read_csv(model_input, header=None)
 
 # now loop over tide gauges and plot them.

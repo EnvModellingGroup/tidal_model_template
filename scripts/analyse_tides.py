@@ -67,7 +67,7 @@ except csv.Error:
 
 ignore = []
 model_data = {}
-thetis_times = np.arange(params.spin_up, params.end_time+1, params.output_time)
+thetis_times = np.arange(params.spin_up, params.end_time, params.output_time)
 df = pd.read_csv(model_input, header=None)
 
 for name in tg_order:
