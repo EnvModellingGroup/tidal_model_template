@@ -5,7 +5,7 @@ ncore=$2
 mesh=$3
 
 resolution=1000
-rojection=EPSG:32630
+projection=EPSG:32630
 maskfile="../mesh/mask.shp"
 
 # do this in two parts - the temporal stats, then tidal
