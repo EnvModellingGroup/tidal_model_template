@@ -54,46 +54,113 @@ thetis_times = t_start + t_export*np.arange(t_n)
 
 
 P1 = FunctionSpace(thetis_mesh, "CG", 1)
-
-# --- create solver ---
-solverObj = solver2d.FlowSolver2d(thetis_mesh, Constant(10))
-options = solverObj.options
-options.simulation_export_time = t_export
-options.simulation_end_time = t_end
-options.output_directory =  thetis_dir
-options.manning_drag_coefficient = Constant(1.0)
-options.horizontal_viscosity = Constant(1.0)
-options.element_family = "dg-dg"
-
 # we need bathy and manning on the same mesh as the elev and vel
 P1DG = FunctionSpace(thetis_mesh, "DG", 1)
 manningdg = project(manning, P1DG)
 bathydg = project(bathymetry2d, P1DG)
 
+elev = Function(P1DG, name='elev_2d')
+elev_data_set = np.empty((t_n, elev.dat.data.shape[0]))
+bathy = bathydg.dat.data[:]
+man = manningdg.dat.data[:]
+# we can now discard the functions
+del(manningdg)
+del(bathydg)
+
+count = 0
+for t in thetis_times:
+    iexport = int(t/t_export)
+    filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
+    print(filename)
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+        e = afile.load_function(thetis_mesh, "elev_2d")
+        elev_data_set[count, :] = e.dat.data[:]
+    count += 1
+
+max_fs = [] # maximum tide height
+min_fs = [] # minimum tide height
+
+for i in range(elev.dat.data.shape[0]): # loop over nodes in the Function mesh
+    all_elev = np.array(elev_data_set[:,i])
+    max_fs.append(np.max(all_elev))
+    min_fs.append(np.min(all_elev))
+
+
+
+# we now sort out the tidal components
+detector_amplitudes = []
+detector_phases = []
+detector_maxfs = []
+detector_minfs = []
+detector_tidal_range = []
+
+for i in range(elev.dat.data.shape[0]):
+    thetis_elev = elev_data_set[:,i]
+    tide = uptide.Tides(constituents)
+    tide.set_initial_time(params.start_datetime)
+
+    # Subtract mean
+    thetis_elev = thetis_elev - thetis_elev.mean()
+    thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev[:], thetis_times[:])
+    
+    detector_maxfs.append(max(thetis_elev[:]))
+    detector_minfs.append(min(thetis_elev[:]))
+    detector_tidal_range.append(max(thetis_elev) - min(thetis_elev))
+    detector_amplitudes.append(thetis_amplitudes)
+    detector_phases.append(thetis_phases)
+
+# sort out the min, max and tidal range - save as h5 to rasterise
+with CheckpointFile(output_dir + '/tidal_stats_scal.h5', "w") as chk:
+    chk.save_mesh(thetis_mesh)
+    tr = Function(P1DG, name="TidalRange")
+    tr.dat.data[:] = np.array(detector_tidal_range)
+    chk.save_function(tr)
+    File( output_dir + '/tidal_range.pvd').write(tr)
+
+    for i in constituents:
+        amp = Function(P1DG, name= i +'_amp')
+        phase = Function(P1DG, name= i +'_phase')
+        phasepi = Function(P1DG, name = i+'_phasepi')
+        amp.dat.data[:] = np.array(detector_amplitudes)[:,constituents.index(i)]
+        phase.dat.data[:] = np.array(detector_phases)[:,constituents.index(i)]
+        chk.save_function(amp)
+        chk.save_function(phase)
+        File( output_dir + '/' + i + '_amp.pvd').write(amp)
+        File( output_dir + '/' + i + '_phase.pvd').write(phase)
+        phasepi.dat.data[:] = np.arcsin(np.sin(phase.dat.data[:]))
+        File( output_dir + '/' + i + '_phase_mod_pi.pvd').write(phasepi)
+        chk.save_function(phasepi)
+
+# we're now done with the elevation data
+del(elev_data_set)
+
 uv = Function(P1DG, name='vel_2d')
 u_data_set = np.empty((t_n, uv.dat.data.shape[0]))
 v_data_set = np.empty((t_n, uv.dat.data.shape[0]))
-elev = Function(P1DG, name='elev_2d')
-elev_data_set = np.empty((t_n, elev.dat.data.shape[0]))
 bss_data_set = np.empty((t_n, elev.dat.data.shape[0]))
 count = 0
-bathy = bathydg.dat.data[:]
-
 for t in thetis_times:
-    PETSc.Sys.Print('Reading h5 files. Time ',int(t/t_export),t)
-    solverObj.load_state(int(t/t_export), legacy_mode=legacy_run)
-    u_data_set[count, :] = solverObj.fields.uv_2d.dat.data[:,0]
-    v_data_set[count, :] = solverObj.fields.uv_2d.dat.data[:,1]
-    elev_data_set[count, :] = solverObj.fields.elev_2d.dat.data[:]
+    iexport = int(t/t_export)
+    filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
+    print(filename)
+    elev_data_set = []
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+        e = afile.load_function(thetis_mesh, "elev_2d")
+        elev_data_set = e.dat.data[:]
+    filename = '{0:s}_{1:05d}'.format("Velocity2d", iexport)
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+        uv = afile.load_function(thetis_mesh, "uv_2d")
+        u_data_set[count, :] = uv.dat.data[:,0]
+        v_data_set[count, :] = uv.dat.data[:,1]
     speed = np.sqrt(u_data_set[count, :]*u_data_set[count, :] + v_data_set[count, :]*v_data_set[count, :])
-    elev_bathy = elev_data_set[count, :] + bathy
+    elev_bathy = elev_data_set + bathy
     elev_bathy[elev_bathy < 0.01] = 0.0
-    man = manningdg.dat.data[:]
     tau_b = np.array(1024*9.81*man*man*speed*speed / (elev_bathy)**(1./3.))
     tau_b[ elev_bathy < 0.001] = 0.0 # we have < 1mm of water
     tau_b[ tau_b < 0.0 ] = 0.0 # we had no water (shouldn't happen due to above, but just in case)
     bss_data_set[count, :] = tau_b
     count += 1
+
 
 ave_speed = [] # average over speeds
 max_speed = [] # max over speeds
@@ -101,15 +168,12 @@ ave_bss = [] # ave of bss calc
 max_bss = [] # max of bss calc
 ave_vel = [] # vector of ave u and ave v
 max_vel = [] # vector of when max speed occurs
-max_fs = [] # maximum tide height
-min_fs = [] # minimum tide height
 
 for i in range(uv.dat.data.shape[0]): # loop over nodes in the Function mesh
     man = np.array(manningdg.dat.data[i])
     bathy = np.array(bathydg.dat.data[i])
     u_vel = np.array(u_data_set[:,i]) # timeseries of u, v and elevation
     v_vel = np.array(v_data_set[:,i])
-    all_elev = np.array(elev_data_set[:,i])
     speed = np.sqrt(u_vel*u_vel + v_vel*v_vel)
     ave_speed.append(np.mean(speed))
     max_speed.append(np.max(speed))
@@ -120,8 +184,6 @@ for i in range(uv.dat.data.shape[0]): # loop over nodes in the Function mesh
     ave_vel.append([np.mean(u_vel), np.mean(v_vel)])
     max_vel.append([u_vel[np.argmax(speed)],v_vel[np.argmax(speed)]])
 
-    max_fs.append(np.max(all_elev))
-    min_fs.append(np.min(all_elev))
 
 # We then save all the scalar temporal stats in a single hdf5 file
 with CheckpointFile(output_dir + '/temporal_stats_scal.h5', "w") as chk:
@@ -164,49 +226,4 @@ with CheckpointFile(output_dir + '/temporal_stats_vec.h5', "w") as chk:
     maxvel.dat.data[:] = np.array(max_vel)
     File( output_dir + '/max_vel.pvd').write(maxvel)
     chk.save_function(maxvel, name='MaxVel')
-
-# we now sort out the tidal components
-detector_amplitudes = []
-detector_phases = []
-detector_maxfs = []
-detector_minfs = []
-detector_tidal_range = []
-
-for i in range(elev.dat.data.shape[0]):
-    thetis_elev = elev_data_set[:,i]
-    tide = uptide.Tides(constituents)
-    tide.set_initial_time(params.start_datetime)
-
-    # Subtract mean
-    thetis_elev = thetis_elev - thetis_elev.mean()
-    thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev[:], thetis_times[:])
-    
-    detector_maxfs.append(max(thetis_elev[:]))
-    detector_minfs.append(min(thetis_elev[:]))
-    detector_tidal_range.append(max(thetis_elev) - min(thetis_elev))
-    detector_amplitudes.append(thetis_amplitudes)
-    detector_phases.append(thetis_phases)
-
-# sort out the min, max and tidal range - save as h5 to rasterise
-P1DG = FunctionSpace(thetis_mesh, "DG", 1)
-with CheckpointFile(output_dir + '/tidal_stats_scal.h5', "w") as chk:
-    chk.save_mesh(thetis_mesh)
-    tr = Function(P1DG, name="TidalRange")
-    tr.dat.data[:] = np.array(detector_tidal_range)
-    chk.save_function(tr)
-    File( output_dir + '/tidal_range.pvd').write(tr)
-
-    for i in constituents:
-        amp = Function(P1DG, name= i +'_amp')
-        phase = Function(P1DG, name= i +'_phase')
-        phasepi = Function(P1DG, name = i+'_phasepi')
-        amp.dat.data[:] = np.array(detector_amplitudes)[:,constituents.index(i)]
-        phase.dat.data[:] = np.array(detector_phases)[:,constituents.index(i)]
-        chk.save_function(amp)
-        chk.save_function(phase)
-        File( output_dir + '/' + i + '_amp.pvd').write(amp)
-        File( output_dir + '/' + i + '_phase.pvd').write(phase)
-        phasepi.dat.data[:] = np.arcsin(np.sin(phase.dat.data[:]))
-        File( output_dir + '/' + i + '_phase_mod_pi.pvd').write(phasepi)
-        chk.save_function(phasepi)
 
