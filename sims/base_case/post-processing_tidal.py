@@ -59,6 +59,7 @@ manningdg = project(manning, P1DG)
 bathydg = project(bathymetry2d, P1DG)
 
 elev = Function(P1DG, name='elev_2d')
+
 elev_data_set = np.empty((t_n, elev.dat.data.shape[0]),dtype=numpy.single)
 bathy = bathydg.dat.data[:]
 man = manningdg.dat.data[:]
