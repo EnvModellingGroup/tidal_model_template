@@ -5,6 +5,7 @@ import sys
 import os.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
+from firedrake.petsc import PETSc
 
 # where should the output of this analysis go
 output_dir = 'analysis'
@@ -68,6 +69,7 @@ for t in thetis_times:
         uv = afile.load_function(thetis_mesh, "uv_2d")
         u_data_set[count, :] = uv.dat.data[:,0]
         v_data_set[count, :] = uv.dat.data[:,1]
+        PETSc.garbage_cleanup(comm=afile._comm)
     count += 1
 
 

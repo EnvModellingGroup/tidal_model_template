@@ -6,6 +6,8 @@ import sys
 import os.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
+from firedrake.petsc import PETSc
+import gc
 
 # where should the output of this analysis go
 output_dir = 'analysis'
@@ -59,7 +61,6 @@ manningdg = project(manning, P1DG)
 bathydg = project(bathymetry2d, P1DG)
 
 elev = Function(P1DG, name='elev_2d')
-
 elev_data_set = np.empty((t_n, elev.dat.data.shape[0]),dtype=numpy.single)
 bathy = bathydg.dat.data[:]
 man = manningdg.dat.data[:]
@@ -75,6 +76,9 @@ for t in thetis_times:
     with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
         e = afile.load_function(thetis_mesh, "elev_2d")
         elev_data_set[count, :] = e.dat.data[:]
+        PETSc.garbage_cleanup(comm=afile._comm)
+        gc.collect()
+
     count += 1
 
 print("Working out min/max")

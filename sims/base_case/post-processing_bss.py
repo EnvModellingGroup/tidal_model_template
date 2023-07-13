@@ -5,6 +5,7 @@ import sys
 import os.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
 import params
+from firedrake.petsc import PETSc
 
 # where should the output of this analysis go
 output_dir = 'analysis'
@@ -33,7 +34,7 @@ manning = chk.load_function(thetis_mesh, 'manning')
 chk.close()
 
 # How long does your simulations run for (s)
-t_end = params.end_time #40 days (i.e. 30 days of analysis)
+t_end = params.spin_up + 10*params.output_time #params.end_time #40 days (i.e. 30 days of analysis)
 # how often are exports produced in the main run?
 t_export = params.output_time
 # which is the start file?
@@ -50,45 +51,62 @@ P1DG = FunctionSpace(thetis_mesh, "DG", 1)
 manningdg = project(manning, P1DG)
 bathydg = project(bathymetry2d, P1DG)
 
-bathy = bathydg.dat.data[:]
-man = manningdg.dat.data[:]
-bss_data_set = np.empty((t_n,bathydg.dat.data.shape[0]),dtype=numpy.single)
+bathy = bathydg.dat.data[:].astype(np.single)
+man = manningdg.dat.data[:].astype(np.single)
+bss_data_set = np.empty((t_n,bathydg.dat.data.shape[0]),dtype="float32")
 # we can now discard the functions
-del(manningdg)
-del(bathydg)
+#del(manningdg)
+print(bss_data_set.dtype, sys.getsizeof(bss_data_set))
+#h.setrelheap()
 
 count = 0
 for t in thetis_times:
     iexport = int(t/t_export)
     filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
-    elev_data_set = []
-    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
-        e = afile.load_function(thetis_mesh, "elev_2d")
-        elev_data_set = e.dat.data[:]
+    afile = CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r')
+    e = afile.load_function(thetis_mesh, "elev_2d")
+    elev_data_set = e.dat.data[:].astype("float32")
+    afile.close()
+    # clean up after ourselves or we get a memory leak
+    PETSc.garbage_cleanup(comm=afile._comm)
     filename = '{0:s}_{1:05d}'.format("Velocity2d", iexport)
-    print("BSS: ",filename, end=" ")
-    v_data_set = []
-    u_data_set = []
-    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
-        uv = afile.load_function(thetis_mesh, "uv_2d")
-        u_data_set = uv.dat.data[:,0]
-        v_data_set = uv.dat.data[:,1]
+    print("BSS: ",filename, end=" ", flush=True)
+    afile = CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r')
+    uv = afile.load_function(thetis_mesh, "uv_2d")
+    afile.close()
+    PETSc.garbage_cleanup(comm=afile._comm)
+    u_data_set = uv.dat.data[:,0].astype("float32")
+    v_data_set = uv.dat.data[:,1].astype("float32")
     speed = np.sqrt(u_data_set*u_data_set + v_data_set*v_data_set)
     elev_bathy = elev_data_set + bathy
     elev_bathy[elev_bathy < 0.01] = 0.0
     tau_b = np.array(1024*9.81*man*man*speed*speed / (elev_bathy)**(1./3.))
     tau_b[ elev_bathy < 0.001] = 0.0 # we have < 1mm of water
     tau_b[ tau_b < 0.0 ] = 0.0 # we had no water (shouldn't happen due to above, but just in case)
-    bss_data_set[count, :] = tau_b
+    bss_data_set[count, :] = tau_b.astype("float32")
+    elev_data_set = None
+    speed = None
+    u_data_set = None
+    v_data_set = None
+    elev_bathy = None
+    tau_b = None
+    e = None
+    uv = None
+    del(e,uv,elev_data_set,speed,u_data_set,v_data_set,elev_bathy,tau_b)
     count += 1
 
+print(bss_data_set.dtype,sys.getsizeof(bss_data_set))
+#print(h.heap())
+
+print("Calculating averages", flush=True)
 ave_bss = [] # ave of bss calc
 max_bss = [] # max of bss calc
-for i in range(uv.dat.data.shape[0]): # loop over nodes in the Function mesh
+for i in range(bathydg.dat.data.shape[0]): # loop over nodes in the Function mesh
     tau_b = bss_data_set[:,i]
     ave_bss.append(np.mean(tau_b))
     max_bss.append(np.max(tau_b))
 
+print("Saving checkpoints", flush=True)
 # We then save all the scalar temporal stats in a single hdf5 file
 with CheckpointFile(output_dir + '/temporal_stats_bss.h5', "w") as chk:
     chk.save_mesh(thetis_mesh)
@@ -100,6 +118,4 @@ with CheckpointFile(output_dir + '/temporal_stats_bss.h5', "w") as chk:
     maxbss.dat.data[:] = np.array(max_bss)
     File( output_dir + '/max_bss.pvd').write(maxbss)
     chk.save_function(maxbss, name='MaxBSS')
-    maxfs = Function(P1DG, name="MaxFS")
-    maxfs.dat.data[:] = np.array(max_fs)
 
