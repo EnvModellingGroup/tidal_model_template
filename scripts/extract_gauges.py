@@ -9,12 +9,13 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, "sims")))
 import params
 from firedrake.petsc import PETSc
+import gc
 
 # EDIT ME #
 run_dir = "../sims/palaeoslip/"
 tide_gauges = "../data/core_sites_sep2021.csv"
 legacy_run = False # will not work with bss with this true...
-extract_bss = False # only set true if you've done so in post-processing
+extract_bss = False # only set true if you've done the BSS post-processing
 
 # You *MAY* need to edit below this line
 # Make sure below matches your main run file as much as possible
@@ -60,50 +61,49 @@ t_start = params.spin_up
 # where are your thetis output files (note, do not include the hdf5 directory)
 thetis_dir = params.output_dir
 
-t_n = int((t_end - t_start + 1) / t_export)
+t_n = int((t_end - t_start) / t_export) + 1
 
 # this is a big assumption in terms of which h5 file exists. May need updating in future.
 chk = CheckpointFile(os.path.join(run_dir,"output/hdf5/Elevation2d_00000.h5"),'r')
 mesh2d = chk.load_mesh()
-
-# --- create dummy solver ---
-solverObj = solver2d.FlowSolver2d(mesh2d, Constant(10.0))
-options = solverObj.options
-options.simulation_export_time = t_export
-options.simulation_end_time = t_end
-options.output_directory =  thetis_dir
-options.manning_drag_coefficient = Constant(1.0)
-options.horizontal_viscosity = Constant(1.0)
-options.element_family = "dg-dg"
-options.output_directory = os.path.join(run_dir,params.output_dir)
-
-
 P1DG = FunctionSpace(mesh2d, "DG", 1)
 speed = Function(P1DG, name='speed')
 
-thetis_times = params.spin_up + params.output_time*np.arange(t_n)
+thetis_times = t_start + t_export*np.arange(t_n)
 elev_data = np.empty((t_n,  len(gauge_locs)))
 speed_data = np.empty((t_n,  len(gauge_locs)))
 bss_data = np.empty((t_n,  len(gauge_locs)))
 
-count = int(t_start / t_export)
 index = 0
-for i in thetis_times:
-    PETSc.Sys.Print('Reading h5 files. Time ',count,i)
-    solverObj.load_state(count, legacy_mode=legacy_run)
-    elev_data[index, :] = solverObj.fields.elev_2d.at(gauge_locs,dont_raise=True)
-    u_data_set = solverObj.fields.uv_2d.dat.data[:,0]
-    v_data_set = solverObj.fields.uv_2d.dat.data[:,1]
-    speed_dat = np.sqrt(u_data_set[:]*u_data_set[:] + v_data_set[:]*v_data_set[:])
-    speed.dat.data[:] = speed_dat
-    speed_data[index, :] = speed.at(gauge_locs,dont_raise=True)
-    count = count + 1
+
+for t in thetis_times:
+    iexport = int(t/t_export)
+    filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
+    print("Elev",filename,end=" ")
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+        e = afile.load_function(thetis_mesh, "elev_2d")
+        elev_data_set[index, :] = e.at(gauge_locs,dont_raise=True)
+        PETSc.garbage_cleanup(comm=afile._comm)
+        gc.collect()
+
+    filename = '{0:s}_{1:05d}'.format("Velocity2d", iexport)    
+    print("Vel:",filename)
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+        uv = afile.load_function(thetis_mesh, "uv_2d")
+        u_data_set[count, :] = uv.dat.data[:,0]
+        v_data_set[count, :] = uv.dat.data[:,1]
+        speed_dat = np.sqrt(u_data_set[:]*u_data_set[:] + v_data_set[:]*v_data_set[:])
+        speed.dat.data[:] = speed_dat
+        speed_data[index, :] = speed.at(gauge_locs,dont_raise=True)
+        PETSc.garbage_cleanup(comm=afile._comm)
+        gc.collect()
+    
     index = index + 1
 
+# add thetis times to file
 elev_data = np.append(np.reshape(np.array(thetis_times),(-1,1)),elev_data,axis=1)
 speed_data = np.append(np.reshape(np.array(thetis_times),(-1,1)),speed_data,axis=1)
 
-#add thetis times to file
 np.savetxt(os.path.join(run_dir,"model_gauges_elev.csv"), elev_data, delimiter=",")
 np.savetxt(os.path.join(run_dir,"model_gauges_speed.csv"), speed_data, delimiter=",")
 
@@ -117,7 +117,9 @@ if (not legacy_run and calc_bss):
         PETSc.Sys.Print('Reading BSS files. Time ',count,i)
         with CheckpointFile(file_location + 'bss_{:05}.h5'.format(i), 'r') as chk:
             bss = chk.load_function(mesh2d, "BSS")
-        bss_data[count, :] = bss.at(gauge_locs,dont_raise=True)
+            PETSc.garbage_cleanup(comm=chk._comm)
+            gc.collect()
+            bss_data[count, :] = bss.at(gauge_locs,dont_raise=True)
         count = count + 1
         index = index + 1
 
