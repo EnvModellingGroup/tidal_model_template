@@ -67,10 +67,7 @@ chk = CheckpointFile(os.path.join(thetis_dir,params.output_dir,"hdf5/Elevation2d
 
 thetis_mesh = chk.load_mesh()
 P1DG = FunctionSpace(thetis_mesh, "DG", 1)
-
 t_n = int((t_end - t_start) / t_export) + 1
-
-P1DG = FunctionSpace(mesh2d, "DG", 1)
 speed = Function(P1DG, name='speed')
 elev = Function(P1DG, name='elev_2d')
 uv = Function(P1DG, name='vel_2d')
@@ -87,9 +84,9 @@ for t in thetis_times:
     iexport = int(t/t_export)
     filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
     print("Elev",filename,end=" ")
-    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
+    with CheckpointFile(os.path.join(thetis_dir,params.output_dir,"hdf5",filename+".h5"), 'r') as afile:
         e = afile.load_function(thetis_mesh, "elev_2d")
-        elev_data_set[index, :] = e.at(gauge_locs,dont_raise=True)
+        elev_data[index, :] = e.at(gauge_locs,dont_raise=True)
         PETSc.garbage_cleanup(comm=afile._comm)
         gc.collect()
 
