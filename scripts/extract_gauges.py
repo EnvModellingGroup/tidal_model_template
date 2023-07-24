@@ -60,7 +60,6 @@ t_export = params.output_time
 t_start = params.spin_up
 
 # where are your thetis output files (note, do not include the hdf5 directory)
-#thetis_dir = "../sims/base_case"
 t_n = int((t_end - t_start) / t_export) + 1
 
 # this is a big assumption in terms of which h5 file exists. May need updating in future.
@@ -68,6 +67,10 @@ chk = CheckpointFile(os.path.join(thetis_dir,params.output_dir,"hdf5/Elevation2d
 
 thetis_mesh = chk.load_mesh()
 P1DG = FunctionSpace(thetis_mesh, "DG", 1)
+
+t_n = int((t_end - t_start) / t_export) + 1
+
+P1DG = FunctionSpace(mesh2d, "DG", 1)
 speed = Function(P1DG, name='speed')
 elev = Function(P1DG, name='elev_2d')
 uv = Function(P1DG, name='vel_2d')
@@ -80,14 +83,13 @@ bss_data = np.empty((t_n,  len(gauge_locs)))
 count = int(t_start / t_export) #orig count = 0
 index = 0 
 
-
 for t in thetis_times:
     iexport = int(t/t_export)
     filename = '{0:s}_{1:05d}'.format("Elevation2d", iexport)
     print("Elev",filename,end=" ")
-    with CheckpointFile(os.path.join(thetis_dir,params.output_dir,"hdf5",filename+".h5"), 'r') as afile:
+    with CheckpointFile(os.path.join(thetis_dir,"hdf5",filename+".h5"), 'r') as afile:
         e = afile.load_function(thetis_mesh, "elev_2d")
-        elev_data[index, :] = e.at(gauge_locs,dont_raise=True)
+        elev_data_set[index, :] = e.at(gauge_locs,dont_raise=True)
         PETSc.garbage_cleanup(comm=afile._comm)
         gc.collect()
 
@@ -98,11 +100,10 @@ for t in thetis_times:
         u_data_set = uv.dat.data[:,0]
         v_data_set = uv.dat.data[:,1]
         speed.dat.data[:] = np.sqrt(u_data_set*u_data_set + v_data_set*v_data_set)
-        speed_data[:] = speed.at(gauge_locs,dont_raise=True)
+        speed_data[index,:] = speed.at(gauge_locs,dont_raise=True)
         PETSc.garbage_cleanup(comm=afile._comm)
         gc.collect()
 
-    count = count + 1
     index = index + 1
 
 # add thetis times to file
