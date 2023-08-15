@@ -86,7 +86,7 @@ File('dist.pvd').write(u)
 chk = CheckpointFile('viscosity.h5', 'w')
 with timed_stage('initialising viscosity'):
     h_viscosity = Function(V, name='viscosity')
-    h_viscosity.interpolate(Max(viscosity, (viscosity*1000) * (1. - u / blend_dist)))
+    h_viscosity.interpolate(max_value(viscosity, (viscosity*1000) * (1. - u / blend_dist)))
     chk.save_mesh(mesh2d)
     chk.save_function(h_viscosity, name='viscosity')
     File('viscosity.pvd').write(h_viscosity)
@@ -96,7 +96,7 @@ with timed_stage('initialising viscosity'):
 chk = CheckpointFile('manning.h5', 'w')
 with timed_stage('initialising manning'):
     manning = Function(V, name='manning')
-    manning.interpolate(Max(manning_drag, (manning_drag*10) * (1. - u / blend_dist)))
+    manning.interpolate(max_value(manning_drag, (manning_drag*10) * (1. - u / blend_dist)))
     chk.save_mesh(mesh2d)
     chk.save_function(manning, name='manning')
     File('manning.pvd').write(manning)
