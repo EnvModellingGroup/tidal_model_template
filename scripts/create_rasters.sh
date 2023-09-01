@@ -4,15 +4,15 @@ directory=$1
 ncore=$2
 mesh=$3
 velocity=true
-bass=true
+bss=true 
 
-resolution=1000
+resolution=8000
 projection=EPSG:32630
-maskfile="../mesh/mask.shp"
+maskfile="../../TM1mSLR/mesh/mask.shp"
 
 function process_file {
 
-    processing_file={$1}
+    processing_file=${1}
 
     # loop over variables
     for (( i=0; i<${#varname[@]}; i++));
@@ -46,9 +46,10 @@ declare -a varname=("MinFS"
 # The English equivalent of above - *same order*, include units
 declare -a names=("Sim HAT (m)"
                   "Sim LAT (m)"
-                 )
+                     ); #moved this along to match others
+
 # process this lot
-process_file("temporal_stats_elev.h5")
+process_file "temporal_stats_elev.h5" 
 
 # function names
 declare -a varname=("TidalRange" 
@@ -73,11 +74,11 @@ declare -a names=("Tidal Range (m)"
                   "O1 phase (radians)"
                  )
 
-process_file("tidal_stats_scal.h5")
+process_file "tidal_stats_scal.h5" #added =
 
 
 
-if [ ${velocity} == true]; then
+if [ ${velocity} == true ]; then #added space between true and ]
     # function names 
     declare -a varname=("AveSpeed"
                     "MaxSpeed"
@@ -87,10 +88,10 @@ if [ ${velocity} == true]; then
                   "Max speed (m/s)"
                  )
     # process this lot
-    process_file("temporal_stats_scal_vel.h5")
+    process_file "temporal_stats_scal_vel.h5"
 fi
 
-if [ ${bss} == true]; then
+if [ ${bss} == true ]; then #added space between true and ]
     # function names 
     declare -a varname=("AveBSS"
                     "MaxBSS"
@@ -100,5 +101,5 @@ if [ ${bss} == true]; then
                   "Max BSS (kgm-1s-2)"
                  )
     # process this lot
-    process_file("temporal_stats_bss.h5")
+    process_file "temporal_stats_bss.h5"
 fi
