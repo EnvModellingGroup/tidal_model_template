@@ -44,8 +44,8 @@ declare -a varname=("MinFS"
                     "MaxFS"
                      )
 # The English equivalent of above - *same order*, include units
-declare -a names=("Sim HAT (m)"
-                  "Sim LAT (m)"
+declare -a names=("Sim LAT (m)"
+                  "Sim HAT (m)"
                      ); #moved this along to match others
 
 # process this lot
