@@ -147,6 +147,6 @@ with CheckpointFile(output_dir + '/temporal_stats_elev.h5', "w") as chk:
     File( output_dir + '/max_fs.pvd').write(maxfs)
     minfs = Function(P1DG, name="MinFS")
     minfs.dat.data[:] = np.array(min_fs)
-    chk.save_function(maxfs, name='MinFS')
+    chk.save_function(minfs, name='MinFS')
     File( output_dir + '/min_fs.pvd').write(minfs)
 
