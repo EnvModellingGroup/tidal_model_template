@@ -35,6 +35,7 @@ function process_file {
 
     done
 
+    rm temp.xyz
 
 }
 
