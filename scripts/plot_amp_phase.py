@@ -71,7 +71,7 @@ df = pd.read_csv(model_input, header=None)
 
 for name in tg_order:
     # pull amplitude
-    idx = tg_order.index(name)
+    idx = tg_order.index(name)+1
     # Subtract mean
     thetis_elev = df.iloc[:, idx]
     thetis_elev = thetis_elev - thetis_elev.mean()
