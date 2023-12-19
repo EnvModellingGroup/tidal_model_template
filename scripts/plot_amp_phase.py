@@ -25,7 +25,7 @@ constituents_to_plot = ["M2", "S2", "K1", "O1"]
 constituents = params.constituents
 start_date = params.start_datetime
 tide = uptide.Tides(constituents)
-tide.set_initial_time(params.start_datetime + datetime.timedelta(hours=10))
+tide.set_initial_time(params.start_datetime + datetime.timedelta(hours=params.time_diff))
 
 # output dir is the run name, minus the csv file, which we discard
 output_dir, filename = os.path.split(model_input)
