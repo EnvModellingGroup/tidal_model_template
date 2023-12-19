@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
@@ -14,10 +13,10 @@ import re
 from ampang import *
 
 model_input = "../sims/base_case/model_gauges_elev.csv"
-tide_gauges = "../data/uk_all_gagues_UTM30.csv"
+tide_gauges = "../data/GBR_gauges_0m.csv"
 
 
-constituents_to_plot = ["M2", "S2", "K1", "O1", "M4"]
+constituents_to_plot = ["M2", "S2", "K1", "O1"]
 
 #################################################
 # assumes you've run extract_guage.py and obtained the file for that
@@ -26,7 +25,7 @@ constituents_to_plot = ["M2", "S2", "K1", "O1", "M4"]
 constituents = params.constituents
 start_date = params.start_datetime
 tide = uptide.Tides(constituents)
-tide.set_initial_time(start_date)
+tide.set_initial_time(params.start_datetime + datetime.timedelta(hours=10))
 
 # output dir is the run name, minus the csv file, which we discard
 output_dir, filename = os.path.split(model_input)
@@ -66,14 +65,14 @@ except csv.Error:
 
 ignore = []
 model_data = {}
-thetis_times = np.arange(params.spin_up, params.end_time, params.output_time)
+thetis_times = np.arange(params.spin_up, params.end_time+params.output_time, params.output_time)
 df = pd.read_csv(model_input, header=None)
 
 for name in tg_order:
     # pull amplitude
     idx = tg_order.index(name)
     # Subtract mean
-    thetis_elev = df.iloc[:, idx]
+    thetis_elev = df.iloc[:, idx]+1
     thetis_elev = thetis_elev - thetis_elev.mean()
     thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev, thetis_times)
     thetis_data = {}
@@ -89,8 +88,8 @@ for name in tg_order:
 smin=0.5
 smax=1.5
 swdt=0.25
-tmin=-30.
-tmax=30
+tmin=-25.
+tmax=25
 twdt=15
 aaa='Ratio of Mag. (cal/obs)'
 bbb='Phase lag'
@@ -105,6 +104,7 @@ pthc=np.array((tmin,tmax,twdt))
 # plot one per component
 for t in constituents_to_plot:
 
+    print(t)
     obs_amps = []
     obs_phases = []
     model_amps = []
@@ -131,17 +131,16 @@ for t in constituents_to_plot:
 
     # add check to make sure we have same number?
 
-    # create the complex array
-    model = model_amps + 1j*model_phases
-    obs = obs_amps + 1j*obs_phases
-    ratio = model/obs
-
+    # create comples array
+    ratio_amps = model_amps/obs_amps
+    phase_lag = model_phases-obs_phases
+    ratios = ratio_amps*np.cos(phase_lag) -1j*ratio_amps*np.sin(phase_lag)
     fig = plt.figure(figsize=(8,8))
     dia = AmpPhsDiagram(reff=refft,fig=fig,amprange=arng,ampthck=athc,phsrange=prng,phsthck=pthc,amptitle=aaa,phstitle=bbb,rd_fmt="%.2f")
     contours=dia.add_contours(levs=[0.2,0.4,0.6],colors='0.5')
     plt.clabel(contours, inline=1, fontsize=10,fmt="%.1f")
     plt.title(t)
-    plt.scatter(ratio.real,ratio.imag,marker='x', s=20, label='Mod/Obs')
+    plt.scatter(ratios.real,ratios.imag,marker='x', s=20, label='Mod/Obs')
     plt.scatter(1,0,marker='*',s=70, label='Reference')    
     plt.legend(loc="lower left",ncol=2,scatterpoints=1)
     plt.savefig(os.path.join(output_dir,"Tidal_validation",t+'_ratio.png'), dpi=180)
