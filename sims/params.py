@@ -15,3 +15,4 @@ output_time = 900
 constituents = ['M2', 'S2', 'N2', 'K2', 'K1', 'O1', 'P1', 'Q1', 'M4']
 # year, month, day, hour, min, sec
 start_datetime = datetime.datetime(2000,1,1,0,0,0) 
+time_diff = 0
