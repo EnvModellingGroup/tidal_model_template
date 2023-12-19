@@ -40,7 +40,7 @@ def tex_escape(text):
 
 constituents = params.constituents
 tide = uptide.Tides(constituents)  # select which constituents to use
-tide.set_initial_time(params.start_datetime) 
+tide.set_initial_time(params.start_datetime + datetime.timedelta(hours=params.time_diff))
 
 t_start = params.spin_up
 t_export = params.output_time
