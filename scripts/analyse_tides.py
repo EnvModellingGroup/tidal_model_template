@@ -74,7 +74,7 @@ for name in tg_order:
     # pull amplitude
     idx = tg_order.index(name)
     # Subtract mean
-    thetis_elev = df.iloc[:, idx]
+    thetis_elev = df.iloc[:, idx]+1
     thetis_elev = thetis_elev - thetis_elev.mean()
     thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev, thetis_times)
     thetis_data = {}

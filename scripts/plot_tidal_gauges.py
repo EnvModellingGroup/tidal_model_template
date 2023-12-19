@@ -103,7 +103,7 @@ for name in tg_order:
     # pull amplitude
     obs_amps = []
     obs_phases = []
-    idx = tg_order.index(name)
+    idx = tg_order.index(name) + 1
     for t in constituents:
         obs_amps.append(float(tide_gauge_data[name][t+" amp"]))
         obs_phases.append(np.radians(float(tide_gauge_data[name][t+" phase"])))
