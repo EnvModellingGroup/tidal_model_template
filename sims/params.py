@@ -1,5 +1,6 @@
 import datetime
 import utm
+from utm import *
 
 # path relative to the root dir of this template. Leave as mesh/blah.msh in most cases
 mesh_file = 'mesh/my_mesh.msh'
