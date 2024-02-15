@@ -34,7 +34,7 @@ manning = chk.load_function(thetis_mesh, 'manning')
 chk.close()
 
 # How long does your simulations run for (s)
-t_end = params.spin_up + 10*params.output_time #params.end_time #40 days (i.e. 30 days of analysis)
+t_end = params.end_time #params.end_time #40 days (i.e. 30 days of analysis)
 # how often are exports produced in the main run?
 t_export = params.output_time
 # which is the start file?
