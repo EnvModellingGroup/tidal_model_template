@@ -16,9 +16,9 @@ import params
 plt.rcParams.update({'font.size': 22})
 
 model_input = "../sims/base_case/model_gauges_elev.csv"
-tide_gauges = "../data/uk_all_gagues_UTM30.csv"
+tide_gauges = "../data/tide_gauges_utm31.csv"
 
-constituents_to_plot = ["M2", "S2", "K1", "O1", "M4"]
+constituents_to_plot = ["M2"]#, "S2", "K1", "O1"]
 
 #################################################
 # assumes you've run extract_guage.py and obtained the file for that
@@ -32,7 +32,7 @@ tide.set_initial_time(start_date)
 # output dir is the run name, minus the csv file, which we discard
 output_dir, filename = os.path.split(model_input)
 # try make the output dir
-os.makedirs(os.path.join(output_dir,"Tidal_validation"), exist_ok=True)
+os.makedirs(os.path.join("Tidal_validation"), exist_ok=True)
 
 # read in tide gauge data, so let's do easiest to hardest...
 # how long is the input? 
@@ -67,14 +67,14 @@ except csv.Error:
 
 ignore = []
 model_data = {}
-thetis_times = np.arange(params.spin_up, params.end_time, params.output_time)
 df = pd.read_csv(model_input, header=None)
+thetis_times = df.iloc[:,0]
 
 for name in tg_order:
     # pull amplitude
-    idx = tg_order.index(name)
+    idx = tg_order.index(name)+1
     # Subtract mean
-    thetis_elev = df.iloc[:, idx]+1
+    thetis_elev = df.iloc[:, idx]
     thetis_elev = thetis_elev - thetis_elev.mean()
     thetis_amplitudes, thetis_phases = uptide.analysis.harmonic_analysis(tide, thetis_elev, thetis_times)
     thetis_data = {}
@@ -91,7 +91,7 @@ errors = []
 av_err = []
 i = 0
 average_amp = []
-for t in constituents:
+for t in constituents_to_plot:
     obs_amps = []
     obs_phases = []
     model_amps = []
@@ -140,9 +140,9 @@ errors = np.array(errors)
 print("Error to Model:")
 # create a prettier table using Pandas (as we've loaded this already)
 dataframe = [errors/len(obs_amps), average_amp,  ((errors/len(obs_amps)) / average_amp)]
-print(pd.DataFrame(dataframe, ["Error", "Gauge av. amp", "Relative err"], constituents))
+print(pd.DataFrame(dataframe, ["Error", "Gauge av. amp", "Relative err"], constituents_to_plot))
 print("\nNo. stations valid:", len(obs_amps), "\n")
-with open(os.path.join(output_dir,"Tidal_validation","thetis_vs_stations.csv"), 'w') as f:
+with open(os.path.join("Tidal_validation","thetis_vs_stations.csv"), 'w') as f:
     writer = csv.writer(f)
     for lt,ln,name in zip(lats,lons,names):
         writer.writerow([name,ln,lt])
@@ -212,6 +212,5 @@ for t in constituents_to_plot:
     print(t, r_value, p_value, std_err)
 
 plt.subplots_adjust(wspace=0.4,hspace=0.4)
-plt.savefig(os.path.join(output_dir,"Tidal_validation","thetis_vs_obs.pdf"), dpi=180)
+plt.savefig(os.path.join("Tidal_validation","thetis_vs_obs.pdf"), dpi=180)
  
-

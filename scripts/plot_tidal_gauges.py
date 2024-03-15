@@ -10,8 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.
 import params
 import re
 
-model_input = "../sims/base_case/model_tide_gauges.csv"
-tide_gauges = "../data/uk_all_gagues_UTM30.csv"
+model_input = "../sims/base_case/model_gauges_elev.csv"
+tide_gauges = "../data/tide_gauges_utm31.csv"
 
 ########################################################
 
@@ -65,7 +65,7 @@ plt.rcParams.update(params)
 # output dir is the run name, minus the csv file, which we discard
 output_dir, filename = os.path.split(model_input)
 # try make the output dir
-os.makedirs(os.path.join(output_dir,"Tidal_Gauges"), exist_ok=True)
+os.makedirs(os.path.join("Tidal_Gauges"), exist_ok=True)
 
 # how long is the input? 
 tide_gauge_data = {}
@@ -95,8 +95,8 @@ except csv.Error:
     sys.exit(1)
 
 # list which gauges want plotting
-model_times = np.arange(t_start,t_end,t_export)
 df = pd.read_csv(model_input, header=None)
+model_times = df.iloc[:,0].to_numpy()
 
 # now loop over tide gauges and plot them.
 for name in tg_order:
@@ -117,7 +117,7 @@ for name in tg_order:
     # Prettier and fixes LaTeX issue
     nice_name = tex_escape(name.replace("_"," ").title())
     obs_ln = ax.plot(t / 86400., eta, color="grey", lw=2, label="Tide gauge", alpha=0.4)
-    mod_ln = ax.plot(np.array(model_times)/86400., df.iloc[:, idx], color=colours[0], lw=1, label="Model")
+    mod_ln = ax.plot(model_times/86400., df.iloc[:, idx].to_numpy(), color=colours[0], lw=1, label="Model")
     ax.set_xlabel("Time (days)")
     ax.set_ylabel("Water height (m)")
     lns = mod_ln + obs_ln
@@ -125,5 +125,5 @@ for name in tg_order:
     leg = ax.legend(lns, labs, loc='lower right',ncol=1)
     leg.get_frame().set_edgecolor('k')
     ax.set_title(nice_name)
-    plt.savefig(os.path.join(output_dir,"Tidal_Gauges","tidal_plot"+name+".png"), dpi=180)
+    plt.savefig(os.path.join("Tidal_Gauges","tidal_plot"+name+".png"), dpi=180)
     plt.close()

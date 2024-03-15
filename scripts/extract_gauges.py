@@ -12,8 +12,8 @@ from firedrake.petsc import PETSc
 import gc
 
 # EDIT ME #
-thetis_dir = "../TM0.03Gebco/sims/base_case/"
-tide_gauges = "../TM0.03Gebco/data/GaugeData_movedZM2.csv"
+thetis_dir = "../sims/base_case/"
+tide_gauges = "../data/tide_gauges_utm31.csv"
 
 legacy_run = False # will not work with bss with this true...
 calc_bss = False # only set true if you've done the BSS post-processing
@@ -52,7 +52,7 @@ gauge_locs = []
 for loc in tide_gauge_data:
     location = (float(tide_gauge_data[loc]['Y']),float(tide_gauge_data[loc]['X']))
     gauge_locs.append((location[1],location[0]))
-
+print(gauge_locs)
 
 # How long does your simulations run for (s)
 t_end = params.end_time
