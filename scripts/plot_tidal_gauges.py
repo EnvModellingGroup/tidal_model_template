@@ -116,7 +116,7 @@ for name in tg_order:
 
     # Prettier and fixes LaTeX issue
     nice_name = tex_escape(name.replace("_"," ").title())
-    obs_ln = ax.plot(t / 86400., eta, color="grey", lw=2, label="Tide gauge", alpha=0.4)
+    obs_ln = ax.plot(t / 86400., eta, color="grey", lw=3, label="Tide gauge", alpha=0.4)
     mod_ln = ax.plot(model_times/86400., df.iloc[:, idx].to_numpy(), color=colours[0], lw=1, label="Model")
     ax.set_xlabel("Time (days)")
     ax.set_ylabel("Water height (m)")
