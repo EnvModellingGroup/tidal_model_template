@@ -18,15 +18,6 @@ forcing_boundary = params.forcing_boundary
 # what distance should be used for the boundary blending (m)
 blend_dist = 50000
 
-def smoothen_bathymetry(bathymetry2d): # smoothing bathymetry
-    v = TestFunction(bathymetry2d.function_space())
-    massb = assemble(v * bathymetry2d *dx)
-    massl = assemble(v*dx)
-    with massl.dat.vec as ml, massb.dat.vec as mb, bathymetry2d.dat.vec as sb:
-        ml.reciprocal()
-        sb.pointwiseMult(ml, mb)
-
-
 # first deal with bathymetry
 with timed_stage('initialising bathymetry'):
     bathy = hrds.HRDS("../../data/gbr_400_utm56S.tif",rasters=['../../data/gbr_100_utm56S_cropped.tif','../../data/oti_bathy_utm56S_filled_cropped.tif'],distances=[500.0,10.0])
@@ -39,13 +30,9 @@ with timed_stage('initialising bathymetry'):
     for i, (xy) in enumerate(mesh2d.coordinates.dat.data):
         bvector[i] = -1.0 * bathy.get_val(xy)
 
-
-smoothen_bathymetry(bathymetry2d)
-File('bathy.pvd').write(bathymetry2d)
 chk = CheckpointFile('bathymetry.h5', 'w')
 chk.save_mesh(mesh2d)
 chk.save_function(bathymetry2d, name='bathymetry')
-
 
 # now create distance from boundary function
 # typical length scale
@@ -77,6 +64,7 @@ for i, eps in enumerate(epss):
     F = inner(sqrt(inner(grad(u), grad(u))), v) * dx - v * dx + eps*inner(grad(u), grad(v)) * dx
     solve(F == 0, u, bcs, solver_parameters=solver_parameters)
 
+# for checking your blend distance
 dist = Function(V, name='dist')
 dist.interpolate(u)
 File('dist.pvd').write(u)
@@ -89,7 +77,6 @@ with timed_stage('initialising viscosity'):
     h_viscosity.interpolate(max_value(viscosity, (viscosity*1000) * (1. - u / blend_dist)))
     chk.save_mesh(mesh2d)
     chk.save_function(h_viscosity, name='viscosity')
-    File('viscosity.pvd').write(h_viscosity)
 
 # create a manning drag function
 #create manning boundary of increased bottom friction
@@ -99,4 +86,3 @@ with timed_stage('initialising manning'):
     manning.interpolate(max_value(manning_drag, (manning_drag*10) * (1. - u / blend_dist)))
     chk.save_mesh(mesh2d)
     chk.save_function(manning, name='manning')
-    File('manning.pvd').write(manning)
