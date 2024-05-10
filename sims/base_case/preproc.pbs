@@ -13,7 +13,10 @@ module load firedrake
 
 unset PYTHONPATH
 
-. /mnt/lustre/groups/env-tsunami-2019/firedrake_dec/bin/activate
+. /mnt/scratch/projects/env-tsunami-2019/firedrake_dec23/bin/activate
+# we need to add the library path so the various .so files are picked up
+# make sure the path matches the one above!
+export LD_LIBRARY_PATH=/mnt/scratch/projects/env-tsunami-2019/firedrake_dec23/src/petsc/default/lib/:$LD_LIBRARY_PATH
 
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
