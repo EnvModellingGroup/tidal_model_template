@@ -15,10 +15,10 @@ import params
 # EDIT ME #
 plt.rcParams.update({'font.size': 22})
 
-model_input = "../sims/base_case/model_gauges_elev.csv"
-tide_gauges = "../data/tide_gauges_utm31.csv"
+model_input = "../sims/modern/model_gauges_elev.csv"
+tide_gauges = "../data/tide_gauge_2.csv"
 
-constituents_to_plot = ["M2"]#, "S2", "K1", "O1"]
+constituents_to_plot = ["M2", "S2", "K1", "O1"]
 
 #################################################
 # assumes you've run extract_guage.py and obtained the file for that
@@ -83,8 +83,16 @@ for name in tg_order:
         thetis_data[c+"_amp"] = thetis_amplitudes[i]
         thetis_data[c+"_phase"] = thetis_phases[i]
         i += 1
+    # add X, Y
+    thetis_data["X"] = tide_gauge_data[name]["X"]
+    thetis_data["Y"] = tide_gauge_data[name]["Y"]
     model_data[name] = thetis_data
 
+# write out a csv file like the tide gauge file
+model_tides = pd.DataFrame.from_dict(model_data).transpose()
+model_tides.columns = model_tides.columns.str.replace("_"," ")
+output_csv = os.path.join(os.path.dirname(model_input), "model_tidal_data.csv")
+model_tides.to_csv(output_csv, index_label="Name")
 
 # Now compare model to tide gagues
 errors = []
@@ -198,7 +206,6 @@ for t in constituents_to_plot:
     y1=gradient*x1+intercept
     ax.plot(x1,y1,'-r')
     
-
     ax.set_title(t)
     # set equal, then adjust boundas
     plt.axis('equal')
