@@ -52,13 +52,17 @@ def main():
             help='The h5 file to rasterise. Without the .h5'
             )
     parser.add_argument(
-            'mesh',
+            '--mesh',
             metavar='mesh',
             help='The mesh file.'
             )
     parser.add_argument(
             '--func',
             help="Harcoded function name. Only used when using temporal_stat* or tidal_stat* files"
+            )
+    parser.add_argument(
+            '--wd_mask',
+            help="Use the elevation (supply h5 filename) and the elevation to mask dry areas in a velocity"
             )
     parser.add_argument(
             '--min_max',
@@ -89,16 +93,25 @@ def main():
     input_file = args.input_file
     meshfile = args.mesh
     output_file = args.output_file
+    min_max = args.min_max
     velocity = args.velocity
     func = args.func
+    wd_mask = args.wd_mask
+    if wd_mask == None:
+        masking = False
+    else:
+        masking = True
+    if verbose:
+        PETSc.Sys.Print("loading mesh")   
+
+    # need to check that min_max or mesh have been supplied
     
     # check filename doesn't end in h5
 
     #load Mesh
-    mesh2d = Mesh(meshfile)
-
-    min_max = args.min_max
     if min_max == None:
+        mesh2d = Mesh(meshfile)
+
         # produces coords per core. Damn.
         min_coords = np.amin(mesh2d.coordinates.dat.data_ro, axis=0)
         max_coords = np.amax(mesh2d.coordinates.dat.data_ro, axis=0)
@@ -156,6 +169,9 @@ def main():
     if (velocity):
         u_data_set = np.empty(len(raster_coords))
         v_data_set = np.empty(len(raster_coords))
+        if masking:
+            elev_data = np.empty(len(raster_coords))
+            bathy_data = np.empty(len(raster_coords))
     else:
         data_set = np.empty(len(raster_coords))
 
@@ -189,7 +205,8 @@ def main():
 
     with CheckpointFile(input_file, "r") as f:
         mesh2d = f.load_mesh()
-        function = f.load_function(mesh2d,func_name)
+        PETSc.Sys.Print('Looking for: ', func_name)
+        function = f.load_function(mesh2d,func_name)        
         data_raster = function.at(raster_coords,dont_raise=True)
 
         if velocity:
@@ -200,6 +217,21 @@ def main():
             # stck so we can slice and extract the u's and v's
             u_data_set = np.stack(data_raster,0)[:,0]
             v_data_set = np.stack(data_raster,0)[:,1]
+            if masking:
+                elev_file = input_file.replace("Velocity", "Elevation")
+                with CheckpointFile(elev_file, "r") as ef:
+                    elev = ef.load_function(mesh2d, "elev_2d")
+                    elev_data = elev.at(raster_coords,dont_raise=True)
+                with CheckpointFile(wd_mask, "r") as bf:
+                    bathy = bf.load_function(mesh2d, "bathymetry")
+                    bathy_data = bathy.at(raster_coords,dont_raise=True)
+
+                # in thetis, "land" is -ve bathy
+                # elev - bathy therefore give +ve number where topo is greater than water
+                dry = np.array(elev_data) - np.array(bathy_data)
+                u_data_set[dry >= 0] = -9999
+                v_data_set[dry >= 0] = -9999
+
 
             # write u to file
             if timestep:
