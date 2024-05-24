@@ -1,14 +1,15 @@
-import shutil
 from thetis import *
 import os.path
-import sys
-import math
-import numpy as np
 import argparse
 import re
 
+# Run like
+#
+# mpiexec -n 5 python h5_2_pvtu ../sims/base_case/output/hdf5/Elevation2d_01100.h5  ../sims/base_case/output/Elevation2d
+#
+# to recreate what a run would have produced.
 
-#create function
+
 def main():
 
     parser = argparse.ArgumentParser(
@@ -30,7 +31,10 @@ def main():
     parser.add_argument(
             'output_file',
             metavar='output_file',
-            help='The output file PVD file. The vtu/pvtus will be treated magically.'
+            # if you are recreating the elev, then you would put ../sims/base_case/output/Elevation_2d
+            # here. This will create the Elevation_2d folder and the PVD/PVTUs inside
+            # If you run on multiple cores, you'll get PVTUs. One a single core, a VTU
+            help='The output PVD without extension. The vtu/pvtus will be created magically.'
             )
     args = parser.parse_args()
     verbose = args.verbose
