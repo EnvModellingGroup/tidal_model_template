@@ -35,8 +35,8 @@ class AmpPhsDiagram(object):
         self.reff = reff            # Reference standard deviation
         self.amprange = amprange    
         self.phsrange = phsrange    
-        idv = np.int( ( ampthck[1]+0.0000001 - ampthck[0] ) / ampthck[2] )+1
-        jdv = np.int( ( phsthck[1]+0.0000001 - phsthck[0] ) / phsthck[2] )+1
+        idv = np.int_( ( ampthck[1]+0.0000001 - ampthck[0] ) / ampthck[2] )+1
+        jdv = np.int_( ( phsthck[1]+0.0000001 - phsthck[0] ) / phsthck[2] )+1
 
         tr = PolarAxes.PolarTransform()
         degree_ticks = lambda d: (d*np.pi/180, "%d$^\\circ$"%(d))

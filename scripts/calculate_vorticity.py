@@ -95,12 +95,16 @@ def main():
             L2_norm = sqrt(assemble(inner(vorticity,vorticity)*dx))
             times_index.append(timestep)
             l2_norms.append(L2_norm)
+            del(L2_norm)
             if output:
                 visu_space = exporter.get_visu_space(vorticity.function_space())
                 # create our exporter
                 e = exporter.VTKExporter(visu_space, "vorticity", outputdir, outputfile, next_export_ix=int(timestep))
                 e.set_next_export_ix(int(timestep))
                 e.export(vorticity)
+            del(vorticity)
+            PETSc.garbage_cleanup(comm=f._comm)
+        gc.collect()
             
     if (rank == 0):
         with open(csv_output, 'w', newline='') as csvfile:
