@@ -52,7 +52,7 @@ def main():
         tail = tail[0:m.start()]
         timestep = m.group()
     else:
-        timestep = None
+        timestep = 0
     
     func_name = ""
     if ("Elevation2d" in tail): 
@@ -60,7 +60,9 @@ def main():
     elif ("Velocity2d" in tail):
         func_name = "uv_2d"
     else:
-        PETSc.Sys.Print("I can't read that file")  
+        PETSc.Sys.Print("I might not be able read that file, but going to try anyway")
+        func_name = tail[0:-3]
+    print(func_name)
 
     # get output dir from the outputname
     outputdir, outputfile = os.path.split(output_file)    
