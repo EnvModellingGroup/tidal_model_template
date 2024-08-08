@@ -5,6 +5,11 @@ import re
 import glob
 import csv
 from mpi4py import MPI
+import gc
+from firedrake.petsc import PETSc
+
+petsc_options = PETSc.Options()
+petsc_options["options_left"] = False
 
 # run like:
 #
@@ -30,6 +35,12 @@ def main():
             default=False
             )
     parser.add_argument(
+            "--start_from",
+            default=0,
+            type=int,
+            help="continue from a previous run from this hdf5 file number. Data will be appended to the output_file"
+            )
+    parser.add_argument(
             '--output_file',
             metavar='output_file',
             help='The output PVD without extension. The vtu/pvtus will be created magically.'
@@ -44,6 +55,7 @@ def main():
     input_dir = args.input_dir
     output_file = args.output_file
     csv_output = args.csv_output
+    start_from = args.start_from
 
     rank = MPI.COMM_WORLD.Get_rank()
     
@@ -54,12 +66,20 @@ def main():
     
     # get list of velocity h5 files
     h5_files = sorted(glob.glob(input_dir + '/Velocity2d*.h5'))
-    l2_norms = []
-    times_index = []
+    if (rank == 0):
+        # if file does not exist, open and write the headers
+        if os.path.exists(csv_output):
+                csvfile = open(csv_output, 'a', newline='')
+                writer = csv.writer(csvfile, delimiter=',',
+                                    quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        else:
+                csvfile = open(csv_output, 'w', newline='')
+                writer = csv.writer(csvfile, delimiter=',',
+                                    quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                writer.writerow(["Index","L2_norm"])
     
     for input_file in h5_files:
-        if verbose:
-            PETSc.Sys.Print("loading file: ", input_file)  
+
 
         # work out the number of the output
         head, tail = os.path.split(input_file)    
@@ -68,10 +88,14 @@ def main():
         m = p.search(tail)
         if m:
             tail = tail[0:m.start()]
-            timestep = m.group()
+            timestep = int(m.group())
         else:
             timestep = None
+        if timestep < start_from:
+            continue
         
+        if verbose:
+            PETSc.Sys.Print("loading file: ", input_file)  
         func_name = ""
         if ("Velocity2d" in tail):
             func_name = "uv_2d"
@@ -93,22 +117,19 @@ def main():
             vorticity_calc = diagnostics.VorticityCalculator2D(function, vorticity)
             vorticity_calc.solve()
             L2_norm = sqrt(assemble(inner(vorticity,vorticity)*dx))
-            times_index.append(timestep)
-            l2_norms.append(L2_norm)
             if output:
                 visu_space = exporter.get_visu_space(vorticity.function_space())
                 # create our exporter
                 e = exporter.VTKExporter(visu_space, "vorticity", outputdir, outputfile, next_export_ix=int(timestep))
                 e.set_next_export_ix(int(timestep))
                 e.export(vorticity)
-            
-    if (rank == 0):
-        with open(csv_output, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile, delimiter=',',
-                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(["Index","L2_norm"])
-            for i, l in zip(times_index, l2_norms):
-                writer.writerow([str(i), str(l)])
+            PETSc.garbage_cleanup(comm=f._comm)
+            gc.collect()
+
+        if (rank == 0):
+            writer.writerow([str(timestep), str(L2_norm)])
+            csvfile.flush()
+
     
 
 if __name__ == "__main__":
