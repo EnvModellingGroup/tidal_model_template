@@ -100,7 +100,7 @@ mesh2d = tidal_elev.function_space().mesh()
 xvector = mesh2d.coordinates.dat.data
 llvector = []
 for i,xy in enumerate(xvector):
-    ll = utm.to_latlon(xy[0], xy[1], utm_zone, utm_band)
+    ll = params.utm.to_latlon(xy[0], xy[1], utm_zone, utm_band)
     llvector.append(ll)
 
 def update_forcings(t):

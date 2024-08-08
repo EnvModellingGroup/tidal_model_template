@@ -93,14 +93,14 @@ solverObj.bnd_functions['shallow_water'] = {
 }
 
 
-solverObj.assign_initial_conditions(uv=Constant((1.0e-10,0.0)))
+solverObj.assign_initial_conditions(uv=Constant((1.0e-12,1.0e-12)))
 
 #work out our coords in lat/lon to save doing this every timestep.
 mesh2d = tidal_elev.function_space().mesh()
 xvector = mesh2d.coordinates.dat.data
 llvector = []
 for i,xy in enumerate(xvector):
-    ll = utm.to_latlon(xy[0], xy[1], utm_zone, utm_band)
+    ll = params.utm.to_latlon(xy[0], xy[1], utm_zone, utm_band)
     llvector.append(ll)
 
 def update_forcings(t):

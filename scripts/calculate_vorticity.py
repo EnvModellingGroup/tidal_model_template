@@ -123,14 +123,17 @@ def main():
                 e = exporter.VTKExporter(visu_space, "vorticity", outputdir, outputfile, next_export_ix=int(timestep))
                 e.set_next_export_ix(int(timestep))
                 e.export(vorticity)
+            if (rank == 0):
+                writer.writerow([str(timestep), str(L2_norm)])
+                csvfile.flush()
+
+            del(vorticity)
             PETSc.garbage_cleanup(comm=f._comm)
             gc.collect()
+            del(L2_norm)
 
-        if (rank == 0):
-            writer.writerow([str(timestep), str(L2_norm)])
-            csvfile.flush()
 
-    
+            
 
 if __name__ == "__main__":
     main()
