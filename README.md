@@ -1,6 +1,10 @@
 # Tidal model template
 
-This repo sets-up a series of standard tidal model as used by the group for a project.
+This repo sets-up a series of standard tidal model as used by the group for a project. To get a copy either:
+
+``git clone --recursive git@github.com:EnvModellingGroup/tidal_model_template.git``
+
+or download as a zip file.
 
 Description of directories:
 - data: put your rasters, gauge data, tidal forcing data, etc in here.
