@@ -33,11 +33,10 @@ with timed_stage('initialising bathymetry'):
 chk = CheckpointFile('bathymetry.h5', 'w')
 chk.save_mesh(mesh2d)
 chk.save_function(bathymetry2d, name='bathymetry')
+PETSc.Sys.Print("Done bathy")
 
 # now create distance from boundary function
 # typical length scale
-
-PETSc.Sys.Print("Done bathy")
 L = Constant(1.0e3)
 V = FunctionSpace(mesh2d, 'CG', 1)
 v = TestFunction(V)
@@ -70,7 +69,8 @@ dist.interpolate(u)
 File('dist.pvd').write(u)
 
 # create a viscosity buffer
-#create boundary of increased viscosity
+# you may need to tweak this a little (it should be as low as possible
+# to get a stable model)
 chk = CheckpointFile('viscosity.h5', 'w')
 with timed_stage('initialising viscosity'):
     h_viscosity = Function(V, name='viscosity')
@@ -78,11 +78,12 @@ with timed_stage('initialising viscosity'):
     chk.save_mesh(mesh2d)
     chk.save_function(h_viscosity, name='viscosity')
 
-# create a manning drag function
-#create manning boundary of increased bottom friction
+# create manning boundary of increased bottom friction. Note this is turned off
+# but you may find the mode is more stable model with a small (10) increase
+# however this may make your model less skillful
 chk = CheckpointFile('manning.h5', 'w')
 with timed_stage('initialising manning'):
     manning = Function(V, name='manning')
-    manning.interpolate(max_value(manning_drag, (manning_drag*10) * (1. - u / blend_dist)))
+    manning.interpolate(max_value(manning_drag, (manning_drag*1) * (1. - u / blend_dist)))
     chk.save_mesh(mesh2d)
     chk.save_function(manning, name='manning')
