@@ -9,7 +9,7 @@ import params
 constituents = params.constituents
 tide = uptide.Tides(constituents)
 # set your start date and time
-tide.set_initial_time(start_datetime)
+tide.set_initial_time(params.start_datetime)
 
 # point me at your FES file
 grid_file_name = "../../data/fes_2014.nc"
