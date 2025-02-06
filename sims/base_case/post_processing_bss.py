@@ -23,7 +23,7 @@ legacy_run = False
 #============================================================#
 
 # making an assumption here on what the hdf5 output is called
-chk = CheckpointFile("output/hdf5/Elevation2d_00000.h5",'r')
+chk = CheckpointFile(thetis_dir+"/hdf5/Elevation2d_00000.h5",'r')
 thetis_mesh = chk.load_mesh()
 
 chk = CheckpointFile('bathymetry.h5','r')
